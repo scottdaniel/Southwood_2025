@@ -1,0 +1,131 @@
+﻿HorseID,Name,subject_id,Age,Breed,Sex,Colic_Duration,Previous_Colic,Lesion_Site,Lesion_Type,Diagnosis,Diagnosis_Category,Procedures,Procedure_Extra Tidy,Procedure_Category,Procedure_Simplicity,study_group,PO_Fever,PO_Colic,PO_Inappe,PO_SSI,PO_Pneumonia,PO_SepticPer,PO_NGR,PO_Diarrhea,SIRS
+103,ALWAYSAROCKSTAR,ALWAYSAROCKSTAR,6,SB,F,4,NA,LI,S,LCV,LIS,PFE,PFE (+/- enema) or biopsies,PFE +/- enema,Simple,72,N,N,N,N,N,N,N,N,N
+50,Amblineasy,Amblineasy,13,TB,F,3,Y,LI,S,540 LCV,LIS,reduction,Reduction/Reposition/Explore only,ExLapReposition,Moderate,72,Y,N,N,N,N,N,N,Y,Y
+72,Americansalute,Americansalute,2,STB,M,<6,N,SI,S,EFE,SIS,"reduction, omentectomy",Reduction/Reposition/Explore only,ExLapReposition,Simple,24,Y,Y,N,N,N,N,Y,N,N
+95,Angel,Angel,19,WB,F,2,N,SI,S,Dorsal body wall rent,SIS,Reduction,Reduction/Reposition/Explore only,ExLapReposition,Simple,24,Y,N,N,N,N,N,N,N,N
+57,Annie,Annie,19,Tenessee walking horse,F,5,NA,LI,S,LCV,LIS,reduction,Reduction/Reposition/Explore only,ExLapReposition,Simple,72,Y,N,N,N,N,N,N,N,N
+27,Arianna,Arianna,5,Friesian,F,14,N,LI,NS,RDC impaction/ gastric impaction,LINS,PF enterotomy,PFE (+/- enema) or biopsies,PFE +/- enema,Simple,24,Y,N,Y,N,N,N,N,N,N
+124,Bacardi,Bacardi,18,WB,G,4,Y,SI,S,Strangulating lipoma,SIS,JJ,SI RNA,SIR&A,Simple,24,N,N,N,N,N,N,N,N,N
+22,Bagel,Bagel,26,Mix,G,3,N,SI,S,Lipoma,SIS,JC (S),SI RNA,SIR&A,Difficult,24,Y,Y,Y,Y,N,Y,Y,N,Y
+75,BaliRollingtide,BaliRollingtide,3,TB,G,2,N,SI,S,Intussuscetion jejunojejunal,SIS,Jejunojejusnostomy,SI RNA,SIR&A,Difficult,72,N,N,N,N,N,N,N,N,N
+91,BallparkFrank,BallparkFrank,25,QH x,G,10,Y,SI,NS,Small intestinal adhesion to omentum,LINS,Adhesion breakdown,Reduction/Reposition/Explore only,Other,Simple,24,N,N,Y,N,N,N,N,N,N
+110,BellinesQualityLady(Foxy),BellinesQualityLady(Foxy),8,WB,F,48,N,LI,S,LCV,LIS,PFE,PFE (+/- enema) or biopsies,PFE +/- enema,Simple,72,Y,Y,N,N,N,N,N,N,N
+18,Bently,Bently,16,WB,G,6,NA,SI,S,EFE/ RDDLC,SIS,Reposition,Reduction/Reposition/Explore only,ExLapReposition,Simple,24,N,N,N,N,N,N,N,N,N
+54,Blue,BlueP,18,paint,G,3,NA,SI,S,strangulating lipoma,SIS,lipoma removal no resection,Reduction/Reposition/Explore only,ExLapReposition,Simple,72,Y,Y,N,Y,N,Y,Y,N,Y
+126,BozmansHoneybee,BozmansHoneybee,4,TB,F,NA,NA,LI,NS,LC impaction,LINS,NA,NA,Med,NA,Med,NA,NA,NA,NA,NA,NA,NA,NA,N
+14,BridledAssurance,BridledAssurance,10,TB,F,3,Y,SI,S,SIV/RDDLC,SIS,Reposition,Reduction/Reposition/Explore only,ExLapReposition,Simple,24,N,N,N,Y,N,N,N,N,N
+7,Bunky,Bunky,25,Paint,G,19,N,SI,S,Lipoma,SIS,JJ,SI RNA,SIR&A,Simple,24,N,Y,Y,N,N,N,N,Y,N
+67,ChamingFashion,ChamingFashion,2,STB,F,6,N,SI,NS,ileal impction gravel,SINS,manual reduction,Reduction/Reposition/Explore only,ExLapReposition,Simple,72,Y,N,N,N,N,N,N,N,N
+127,ChamplainsDream,ChamplainsDream,3,TB,F,7,NA,LI,NA,LC impaction,LINS,NA,NA,Med,NA,Med,NA,NA,NA,NA,NA,NA,NA,NA,N
+23,Charlie,Charlie,15,QH,G,16,N,LI,S,Lipoma,LIS,"SCR&A, PFE",Multiple,Other LI enterotomy/enterectomy,Difficult,72,Y,N,N,N,N,N,N,N,N
+111,Cheetara,Cheetara,7,TB,F,2,N,SI,NS,SI impaction,SINS,Reposition,Reduction/Reposition/Explore only,ExLapReposition,Simple,72,Y,Y,N,N,N,N,N,N,N
+58,Chevy,Chevy,21,QH,G,8,N,SI,S,strangulating lipoma,SIS,jejunocecostomy,SI RNA,SIR&A,Difficult,24,N,Y,Y,N,N,N,Y,Y,N
+19,CJLeopold(Leo),CJLeopold,3,WB,G,48,NA,SI,S,SIV,SIS,JJ,SI RNA,SIR&A,Simple,24,Y,Y,N,N,N,N,N,N,N
+82,Confetti,Confetti,18,Appaloosa Cross,F,4,NA,SI,S,Strangulating lipoma,SIS,8 ft Jejunojejunostomy R&A,SI RNA,SIR&A,Simple,24,N,Y,N,N,N,N,N,N,N
+63,Cosmo,Cosmo,20,QH,G,6,NA,SI,S,Jejunal mass causing strangulation,SIS,jejunojejunostomy,SI RNA,SIR&A,Simple,72,N,Y,N,N,N,N,Y,N,NA
+51,crescentlady,crescentlady,7,TB,F,2,NA,LI,S,LCV,LIS,reduction,Reduction/Reposition/Explore only,ExLapReposition,Simple,72,Y,Y,Y,N,N,N,N,Y,Y
+106,Desi,Desi,5,PonyX,F,4,N,LI,S,SC strangulation by ovarian pedicle,LIS,PF enterotomy/high enema,PFE (+/- enema) or biopsies,PFE +/- enema,Difficult,72,Y,Y,N,N,N,N,N,N,N
+100,Dino,Dino,15,WB,G,12,Y,SI,S,segmental volvulus,SIS,"10 ft jejunocecostomy, SI enterotomy",SI RNA,SIR&A,Difficult,72,Y,N,N,N,N,N,N,N,N
+86,Dragon,Dragon,17,Arabian,M,6,NA,SI,S,Strangulating lipma,SIS,10 ft R&A jejunocecodtomy.,SI RNA,SIR&A,Difficult,72,N,N,N,N,N,N,N,N,N
+128,Dusty,Dusty,3,Paint,G,24,Y,SI,NS,"Enteritis, sand enteropathy",SINS,NA,NA,Med,NA,Med,NA,NA,NA,NA,NA,NA,NA,NA,N
+117,E'sence,E'sence,6,WB,G,33,N,LI,NS,Fecalith LC,LINS,PFE,PFE (+/- enema) or biopsies,PFE +/- enema,Simple,24,Y,N,N,Y,N,N,N,N,N
+70,Eclipse,Eclipse,16,WB,G,6,NA,SI,S,strangulating lipoma,SIS,mesenteric fenestration/lipoma resection. No R&A,Reduction/Reposition/Explore only,ExLapReposition,Difficult,24,Y,N,N,N,N,N,N,Y,N
+2,Ellie,Ellie,10,TB,F,36,Y,LI,NS,"Right dorsal colon impaction, LCV (""partial"")",LINS,PFE,PFE (+/- enema) or biopsies,PFE +/- enema,Simple,24,N,N,N,Y,N,N,N,N,N
+97,Fancy,Fancy,28,TNW,F,8,NA,SI,S,Strangulating lipoma,SIS,12 ft jejunojejunostomy,SI RNA,SIR&A,Simple,24,Y,Y,Y,Y,N,Y,Y,Y,Y
+93,FancyBritches,FancyBritches,9,STB,F,3-Feb,NA,LI,S,"360 LCV, large colon was congested, severe edema, and ischemia",LIS,PFE,PFE (+/- enema) or biopsies,PFE +/- enema,Difficult,24,N,Y,Y,N,N,N,N,N,Y
+16,FelixEXCLUDE,FelixEXCLUDE,24,WB,G,NA,NA,SI,S,Lipoma,SIS,Reposition,Reduction/Reposition/Explore only,ExLapReposition,Simple,24,Y,Y,N,N,N,N,Y,N,N
+56,Fillip,Fillip,18,WB,G,12,Y,LI,NS,LDD secondary SI distension,LINS,reduction,Reduction/Reposition/Explore only,ExLapReposition,Simple,72,N,N,N,N,N,N,N,N,N
+61,fillmypocketsup,fillmypocketsup,14,STB,F,24,NA,SI/LI,NS,ileus/ enterotyphlocolitis,SI-LI,liver biopsy,Reduction/Reposition/Explore only,Other ,Simple,24,Y,N,N,N,N,N,N,N,N
+78,Finnegan,Finnegan,20,TB,G,4,NA,SI,S,Strangulating lipoma,SIS,reduction no resection,Reduction/Reposition/Explore only,ExLapReposition,Simple,24,N,N,N,N,N,N,N,N,N
+1,FinnEXCLUDEEUTH4D,FinnEXCLUDEEUTH4D,9,TB,G,3,N,SI,S,Rent in lateral ligament of bladder,SIS,Reduction,Reduction/Reposition/Explore only,ExLapReposition,Simple,24,Y,Y,Y,N,N,N,Y,N,Y
+85,Frankie,Frankie,17,Saddlebred,G,24,NA,LI,NS,Smal colon enterolith,LINS,"PFE, Small colon enterotomy",PFE (+/- enema) or biopsies,Other LI enterotomy/enterectomy,Simple,24,N,N,N,N,N,N,N,N,N
+30,FurestJameson(Mako),FurestJameson,17,Oldenburg,G,7,N,SI,S,strangulating lipoma,SIS,Lipoma resection,Reduction/Reposition/Explore only,ExLapReposition,Simple,72,N,N,N,N,N,N,Y,N,N
+55,GangsterofLove,GangsterofLove,15,Arabian,G,3,NA,SI,S,EFE,SIS,reduction no resection,Reduction/Reposition/Explore only,ExLapReposition,Simple,24,NA,y,NA,NA,NA,NA,NA,NA,NA
+74,George,George,26,WB,G,NA,N,SI,S,strangulating lipoma,SIS,"jejunoiliostomy, omentectomy",Multiple,SIR&A,Simple,72,N,N,N,N,N,N,N,N,N
+9,Giacomo,Giacomo,15,WB,G,7,N,LI,S,Lipoma,LIS,"SCR&A, PFE, high enema",Multiple,Other LI enterotomy/enterectomy,Difficult,24,Y,Y,N,N,N,N,N,N,Y
+21,Gus,Gus,13,TB,G,12,N,LI,S,LCV,LIS,Reposition,Reduction/Reposition/Explore only,ExLapReposition,Simple,72,N,N,N,N,N,N,N,N,N
+33,Gus,Gus,14,QH,G,9,NA,LI,NS,RDD,LINS,Reduction,Reduction/Reposition/Explore only,ExLapReposition,Simple,72,N,N,N,N,N,N,N,N,N
+81,Hank,Hank,5,TB,G,4-Mar,N,SI,S,EFE,SIS,"Jejunocecostomy, omentectomy",SI RNA,SIR&A,Difficult,72,Y,Y,N,Y,N,N,N,N,N
+29,Harper,Harper,12,WB,G,24,Y,LI,NS,NSE,LINS,"Reduction, PFE, omentectomy",Multiple,PFE +/- enema,Simple,72,Y,N,N,N,N,N,N,N,N
+47,Hero,Hero,33,DWB,G,6,Y,SI,S,strangulating lipoma,SIS,jejunojejunostomy,SI RNA,SIR&A,Simple,72 stoped at 24,N,Y,Y,N,N,N,N,N,N
+77,Hip116Bettorseetheshow,Hip116Bettorseetheshow,1,STB,M,NA,NA,LI,S,LCV,LIS,PFE,PFE (+/- enema) or biopsies,PFE +/- enema,Difficult,24,NA,NA,NA,NA,NA,NA,NA,NA,NA
+28,HometownFav,HometownFav,2,TB,M,80,Y,LI,NS,"LC impaction, transverse colon luminal narrowing",LINS,PFE,PFE (+/- enema) or biopsies,PFE +/- enema,Simple,24,N,N,N,N,N,N,N,N,N
+71,Hustleup,Hustleup,2,STB,G,0,NA,SI,S,evisceration via screotal castration,SIS,Jejunojejunostomy 8 ft,SI RNA,SIR&A,Simple,72,Y,N,N,N,N,N,N,N,N
+36,IceColdMachine,IceColdMachine,13,paint,M,6,N,LI,NS,"Nephrosplenic entrapment, LC impaction",LINS,PF enterotomy,PFE (+/- enema) or biopsies,PFE +/- enema,Simple,24,N,N,N,N,N,N,N,N,N
+59,Imani,Imani,10,Arabian x,F,10,N,SI,S,omental adhesions,SIS,jejunocecostomy,SI RNA,SIR&A,Difficult,72,N,N,N,N,N,N,N,N,N
+102,Invesco,Invesco,20,WB,G,4,N,SI,S,Strangulating lipoma,SIS,JJ,SI RNA,SIR&A,Simple,72,N,N,Y,N,N,N,N,N,N
+96,J.T,J.T,20,Morgan,G,3,NA,SI,S,Small intestinal volvulus,SIS,"reduction, removed lipoma, omentectomy",Multiple,ExLapReposition,Simple,72,Y,Y,N,Y,N,N,Y,N,N
+43,Jedi,Jedi,28,Tenessee Walking horse,G,24,Y,LI,S,small colon stangulating lipoma,LIS,wedge ressection SC,Reduction/Reposition/Explore only,Other LI enterotomy/enterectomy,Simple,24,N,N,N,N,N,N,N,N,N
+121,Jersey,Jersey,4,QH,G,48,NA,LI,NS,SC impaction,LINS,PFE/enema,PFE (+/- enema) or biopsies,PFE +/- enema,Simple,24,Y,N,N,Y,N,N,N,N,N
+32,Katie,Katie,3,dutch harness STB x,F,36,NA,LI,NS,"RDD, fecalith",LINS,"reduction, small colon and PF enterotomt",Multiple,Other LI enterotomy/enterectomy,Difficult,24,N,N,N,N,N,N,N,N,N
+99,Kelstar,Kelstar,13,WB,G,24,Y,LI,S,LCV with RD impaction,LIS,"PF enterotomy, biopsies, redused volvulus",Multiple,PFE +/- enema,Simple,72,Y,N,N,N,N,N,N,N,N
+101,KINGMENDELSSOHN,KINGMENDELSSOHN,3,TB,M,18,N,LI,NS,RDD,LINS,Reposition,Reduction/Reposition/Explore only,ExLapReposition,Simple,72,Y,N,N,N,N,N,N,N,N
+65,Kyanite,Kyanite,9,TB,G,NA,NA,LI,S,360 LCV,LIS,reduction,Reduction/Reposition/Explore only,ExLapReposition,Simple,72,N,N,N,N,N,N,N,N,N
+76,Lena,Lena,11,Andalusian,F,5,N,SI,S,strangulating lipoma,SIS,reduction no resection,Reduction/Reposition/Explore only,ExLapReposition,Simple,24,N,N,N,N,N,N,N,N,N
+68,levi,levi,17,QH,G,12,NA,SI,S,omental adjesions,SIS,Jejunojejunostomy,SI RNA,SIR&A,Simple,24,Y,N,N,N,N,N,N,N,N
+125,Levi,Levi,17,QH,G,12,NA,SI,S,Omental adhesions,SIS,JJ,SI RNA,SIR&A,Simple,24,Y,N,N,N,N,N,N,N,N
+35,Li'Lbito'Glory,LilBitoGlory,4,TB,F,6,N,SI,NS,Segmental volvulus,SIS,reduction/ omentectomy,Reduction/Reposition/Explore only,ExLapReposition,Simple,24,Y,Y,Y,N,N,N,Y,N,N
+60,Lilimage,Lilimage,6,STB,F,24,NA,SI,NS,"SI volvulus, adhesion",SIS,JJ side to side incomplete bypass,SI RNA,SIR&A,Difficult,24,Y,Y,N,N,Y,N,N,N,N
+6,LittleMiss,LittleMiss,13,QH,F,8,Y,SI,S,GLE,SIS,JJ,SI RNA,SIR&A,Simple,72,Y,N,N,Y,N,N,Y,N,N
+49,LunarPhase,LunarPhase,9,STB,F,6,NA,LI,S,360 LCV,LIS,reduction,Reduction/Reposition/Explore only,ExLapReposition,Simple,24,Y,N,Y,N,N,N,N,N,Y
+46,Mari,Mari,35,paso fino,G,96,N,SI,S,strangulating lipoma,SIS,"Reduction, lipoma removal",Reduction/Reposition/Explore only,ExLapReposition,Simple,72,Y,Y,N,N,N,N,N,N,N
+87,Marley,Marley,27,Morgan,F,6,N,SI,S,volvulous nodosus,SIS,jejunoileostomy,SI RNA,SIR&A,Difficult,72,N,Y,Y,Y,N,Y,Y,N,N
+114,MasterManipulator(Moose),MasterManipulator(Moose),19,TB,G,NA,N,LI,S,LCV,LIS,Reposition,Reduction/Reposition/Explore only,ExLapReposition,Simple,24,N,N,N,N,N,N,N,Y,N
+34,Max,Max,23,Connemara,G,12+,N,SI,S,strangulating lipoma,SIS,SI enterotomy/ JI R&A,Reduction/Reposition/Explore only,ExLapReposition,Difficult,24,Y,Y,N,N,N,N,Y,N,N
+10,Maximus,Maximus,22,QH,G,8,Y,SI,S,SI entrapment in mesoduodenal rent,SIS,Exploratory only,Reduction/Reposition/Explore only,ExLapReposition,Simple,72,N,N,N,N,N,N,N,N,N
+118,Meatball,Meatball,4,TB,G,37,N,LI,NS,NSLE,LINS,Reposition,Reduction/Reposition/Explore only,ExLapReposition,Simple,72,Y,Y,N,N,N,N,N,N,N
+80,Miranda,Miranda,3,MO Fox trotter,F,NA,NA,SI,NS,Ileal impaction,SINS,decompression,Reduction/Reposition/Explore only,ExLapReposition,Simple,72,Y,Y,N,N,N,N,N,N,Y
+120,MissSilkwood,MissSilkwood,22,QH,F,14,N,SI,S,Strangulating lipoma,SIS,JJ,SI RNA,SIR&A,Simple,72,Y,N,N,Y,N,N,N,N,N
+45,Mocha,Mocha,5,QH,F,6,N,SI,S,Ileal/ jejunum volvulus nodosus,SIS,"reduction, ligation mesodiverticular band. removed adhesion SI to ventral colon",Reduction/Reposition/Explore only,ExLapReposition,Simple,24,N,N,N,N,N,N,N,N,N
+98,Molly,Molly,29,QH/ Pony x,F,3.5,N,SI,S,Strangulating lipoma,SIS,Jejunocecostomy,SI RNA,SIR&A,Difficult,24,Y,Y,N,N,N,N,N,N,N
+104,MonbegStream,MonbegStream,8,TB,G,22,N,SI,S,EFE,SIS,Reposition,Reduction/Reposition/Explore only,ExLapReposition,Simple,24,Y,N,N,N,N,N,N,N,N
+84,MondayMorningQB,MondayMorningQ,6,TB,G,6,N,LI,S,cecal volvulus LDDLC,LIS,reduction,Reduction/Reposition/Explore only,ExLapReposition,Simple,24,N,N,N,N,N,N,N,Y,N
+69,MsmacandCheese,MsMacAndCheese,11,STB,F,3,NA,LI,S,LCV,LIS,reduction PF enterotomy,PFE (+/- enema) or biopsies,PFE +/- enema,Simple,24,N,N,N,N,N,N,N,N,N
+64,Nevada,Nevada,18,mustang,F,10,NA,SI,NS,"jejunalimpaction, early SIV",SINS,manual decompresion,Reduction/Reposition/Explore only,ExLapReposition,Simple,24,Y,N,N,N,N,N,N,N,N
+116,"NewshamDiamond""Oliver""","NewshamDiamond""Oliver""",18,Irish,G,1,Y,LI,NS,LDD/Adhesions,LINS,LCR,LC RNA,Other LI enterotomy/enterectomy,Difficult,24,N,Y,Y,Y,Y,N,N,Y,N
+26,Niko,Niko,10,WB,G,36,Y,LI,S,LCV/RDC impaction,LIS,PFE,PFE (+/- enema) or biopsies,PFE +/- enema,Simple,24,Y,N,N,Y,N,N,N,N,N
+129,OrashansChynnaDoll,OrashansChynnaDoll,14,Arabian,F,11,NA,LI,NS,Ileus,LINS,NA,NA,Med,NA,Med,NA,NA,NA,NA,NA,NA,NA,NA,N
+37,Orion,Orion,19,rocky Mountain,G,4,NA,SI,S,strangulating lipoma,SIS,jejunojejunostomy,SI RNA,SIR&A,Simple,72,N,N,N,N,N,N,N,Y,N
+130,Paris,Paris,20,Paint,F,5,NA,LI,NS,"Open, suspect dysbiosis",SI-LI,NA,NA,Med,NA,Med,NA,NA,NA,NA,NA,NA,NA,NA,N
+13,Particular,Particular,3,TB,M,1.5,N,SI,S,SIV(mesodiverticular band),SIS,Reposition,Reduction/Reposition/Explore only,ExLapReposition,Simple,72,Y,Y,Y,N,N,N,N,N,N
+48,Pie,Pie,13,Appaloosa,F,8,NA,SI/LI,NS/S,"180 LCV, SI strngulation by aadhesion to broad lig",SIS,Biopsy of the adhesion,Reduction/Reposition/Explore only,Other,Difficult,72,N,N,N,Y,N,N,N,N,N
+40,Poppi,Poppi,13,TB/Welsh cross,G,>6 hr (found down in field),N,SI,S,Omental rent (ileum),SIS,Jejunocecostomy,SI RNA,SIR&A,Difficult,24,Y,Y,N,N,N,N,N,N,N
+105,PrimoVomo,PrimoVomo,5,SB,M,48,N,LI,NS,RDD/LCI,LINS,PF enterotomy,PFE (+/- enema) or biopsies,PFE +/- enema,Simple,72,Y,N,N,Y,N,N,N,N,N
+94,Quinn,Quinn,20,QH,G,12,N,SI,S,EFE,SIS,Reduced lesion,Reduction/Reposition/Explore only,ExLapReposition,Difficult,24,N,y,N,N,N,N,N,N,N
+90,ReadyReward,ReadyReward,7,TB,G,7,N,Sl,S,EFE,SIS,Celiotomy,Reduction/Reposition/Explore only,ExLapReposition,Simple,72,N,N,N,N/A,N,N,N,N,N
+24,Ritz,Ritz,15,Dutch Harness Horse X,G,24,N,LI,S,LCV/Sand,LIS,PFE,PFE (+/- enema) or biopsies,PFE +/- enema,Simple,24,N,Y,N,N,N,N,N,N,N
+112,Royal,Royal,8,QH,F,60,N,LI,S,Impaction/LCV,LIS,PFE,PFE (+/- enema) or biopsies,PFE +/- enema,Simple,72,Y,N,N,N,N,N,N,N,N
+17,Ruby,Ruby,10,STB,F,3,N,LI,S,LCV/NSLE,LIS,Reposition,Reduction/Reposition/Explore only,ExLapReposition,Simple,72,N,N,N,N,N,N,N,N,N
+119,Ruffian,Ruffian,3,SB,F,12,NA,LI,NS,NSLE,LINS,Reposition,Reduction/Reposition/Explore only,ExLapReposition,Simple,24,Y,N,Y,N,N,N,Y,N,N
+109,Sassy,Sassy,11,QH,F,6,NA,LI,NS,RDD,LINS,Reposition,Reduction/Reposition/Explore only,ExLapReposition,Simple,24,Y,N,N,N,N,N,N,N,N
+122,Scarlet,Scarlet,13,Cross,F,3,NA,LI,S,SC lipoma,SIS,PFE/enema,PFE (+/- enema) or biopsies,,Simple,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+113,Sebastian,Sebastian,22,TB,G,7,Y,SI,S,Strangulating lipoma,SIS,JJ,SI RNA,SIR&A,Simple,72,Y,Y,N,Y,N,N,N,N,N
+107,SecondChance,SecondChance,22,Chincoteague,G,6,Y,SI,S,Strangulating lipoma,SIS,JJ,SI RNA,SIR&A,Simple,24,N,N,N,N,N,N,N,N,N
+20,Shadow,Shadow,15,QH,G,96,Y,LI,NS,RDC impaction,LINS,PFE,PFE (+/- enema) or biopsies,PFE +/- enema,Simple,72,N,N,N,N,N,N,N,N,N
+88,Simba,Simba,13,Palomino,G,NA,NA,SI,S,gastrosplenic ligament entrapment with approximately 21 ft of comprimised small intestine necessitating a resection and anastamosis,SIS,JJ 21 ft resection,SI RNA,SIR&A,Difficult,24,Y,N,N,Y,N,N,N,N,N
+39,SirWinston,SirWinston,21,Friesian,G,8,NA,SI,S,strangulating lipoma,SIS,jejunojejunostomy,SI RNA,SIR&A,Simple,24,Y,N,N,N,N,N,Y,N,N
+62,SmartRistoKitten(Biggie),SmartRistoKitten,9,QH,G,8,Y,SI/LI,NS,omental adhesions,SI-LI,omentectomy,Reduction/Reposition/Explore only,ExLapReposition,Simple,72,N,N,N,N,N,N,N,N,N
+3,SouvenirHanover,SouvenirHanover,12,STB,F,336,N,SI,NS,"Right dorsal colon impaction, jejunal extraluminal obstruction",LINS,PFE,PFE (+/- enema) or biopsies,PFE +/- enema,Simple,72,Y,N,N,N,N,N,Y,N,N
+115,SplitinTwo,SplitinTwo,5,TB,F,4,N,LI,NS,RDD,LINS,Reposition,Reduction/Reposition/Explore only,ExLapReposition,Simple,72,Y,N,N,N,N,N,N,N,N
+42,St.PatricksDay,StPatricksDay,7,STB,M,13,NA,SI,S,Gastrosplenic ligament entrapment.,SIS,jejunojejunostomy,SI RNA,SIR&A,Difficult,24,Y,Y,Y,Y,Y,N,Y,N,Y
+44,Starlight,Starlight,21,QH,F,3.5,N,SI,S,strangulating lipoma,SIS,Jejunojejunostomy,SI RNA,SIR&A,Simple,24,Y,N,Y,N,N,N,N,Y,N
+79,SummerStarLE,SummerStarLE,12,Arabia x,F,12,Y,LI,NS,RDDLC,LINS,Colopexy,Multiple,Other,Simple,72,N,N,N,N,N,N,N,N,N
+53,Summit,Summit,25,paint,G,12,N,SI,S,strangulating lipoma,SIS,jejunocecostomy,SI RNA,SIR&A,Difficult,24,Y,N,N,N,N,Y,N,N,Y
+31,SweetRockDeo,SweetRockDeo,3,STB,F,6,N (owners only had a few months),LI,NS,RDD with 270 degree LCV,LINS,"Reduction, PFE, omentectomy",Multiple,PFE +/- enema,Simple,72,Y,N,N,N,N,N,N,N,N
+123,Taco,Taco,20,TB,G,2,N,LI,NS,Gravel impaction,LINS,PFE,PFE (+/- enema) or biopsies,PFE +/- enema,Simple,24,Y,N,N,Y,N,N,N,N,N
+83,Tako,Tako,15,TB,G,3,N,SI,NS,ileal impaction/ muscular hypertrophy,SINS,"enterotomy, Jejunocecostomy with ileal bypass, no transection",Multiple,SIR&A,Difficult,72,N,N,N,N,N,N,N,N,N
+4,TalkoftheTown,TalkOfTheDown,19,QH,G,8,Y,SI,S,Lipoma,SIS,Reposition,Reduction/Reposition/Explore only,ExLapReposition,Simple,24,N,N,N,N,N,N,N,N,N
+25,TangoEXCLUDE,Tango,12,Oldenburg,F,18,NA,LI,S,LCV/NSLE,LIS,PFE,PFE (+/- enema) or biopsies,PFE +/- enema,Simple,72,Y,Y,Y,N,N,Y,Y,Y,Y
+92,Thedingoateyobaby(Dingo),TheDingoAteYoBaby,3,TB,M,6,NA,SI,S,"jejunal and ileal thickening, suspect loose strangulating small intestinal lesion gastrosplenic lig entrapment",SIS,Si biopsies,PFE (+/- enema) or biopsies,Other,Simple,24,Y,N,N,N,N,N,N,N,N
+12,TheyCallThisLopin(Bear),TheyCallThisLopin,16,QH,G,NA,Y,LI,S,LCV,LIS,Reposition,Reduction/Reposition/Explore only,ExLapReposition,Simple,72,Y,N,N,N,N,N,N,Y,Y
+52,Trojan,Trojan,23,WB,G,4,N,SI,S,strangulating lipoma,SIS,reduction,Reduction/Reposition/Explore only,ExLapReposition,Simple,24,Y,N,N,N,N,N,N,N,N
+38,Tucker,Tucker,23,Appaloosa,G,3,NA,SI,S,strangulating lipoma,SIS,jejunojejunostomy,SI RNA,SIR&A,Simple,72,N,N,N,N,N,N,Y,N,N
+66,Vegasstyleproposal(Ace),Vegasstyleproposal(Ace),12,Paint,G,4,NA,LI,S,540 LCV,LIS,reduction PF enterotomy,PFE (+/- enema) or biopsies,PFE +/- enema,Difficult,24,Y,N,N,N,N,N,Y,N,Y
+8,Vienna,Vienna,9,WB,F,4,N,LI,S,LCV,LIS,Reposition,Reduction/Reposition/Explore only,ExLapReposition,Simple,24,N,N,N,N,N,N,N,N,N
+73,vincentVanWoah,VincentVanWhoa,19,QH,G,3,N,SI,S,omental rent,SIS,"jejunoiliostomy, omentectomy",Multiple,SIR&A,Difficult,24,N,N,N,N,N,N,N,N,N
+15,Violet,Violet,24,Mix,F,NA,N,SI,S,Lipoma,SIS,JC (HS),SI RNA,SIR&A,Difficult,72,Y,Y,N,N,N,N,N,N,N
+89,VroomVroom,Vroom,9,WB,G,3,Y,SI,S,EFE,SIS,JC 20ft,SI RNA,SIR&A,Difficult,72,Y,Y,N,N,N,N,Y,N,Y
+11,Who'sCozy,WhosCozy,20,TB,F,6,N,LI,S,LCV,LIS,Reposition,Reduction/Reposition/Explore only,ExLapReposition,Simple,24,N,N,N,N,N,N,N,N,N
+41,Winnie,Winnie,25,arabian x,F,6,Y,SI/LI,S/NS,"gastrosplenic ligament entrapment, RDD",SIS,Jejunojejunostomy,SI RNA,SIR&A,Simple,72,Y,Y,Y,N,Y,N,Y,N,N
+108,Wolfgang,Wolfgang,19,WB,G,6,N,SI,S,Strangulating lipoma,SIS,Reposition,Reduction/Reposition/Explore only,ExLapReposition,Simple,72,N,N,N,N,N,N,N,N,N
+5,Zazz,Zazz,4,STB,F,24,N,LI,S,"360 degree LCV, LC impaction, gastric impaction",LIS,PFE,PFE (+/- enema) or biopsies,PFE +/- enema,Simple,72,Y,N,N,Y,N,N,N,N,N

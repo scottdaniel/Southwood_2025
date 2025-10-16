@@ -1,0 +1,116 @@
+
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(qiimer)
+library(vegan)
+library(ape)
+library(usedist)
+library(here)
+```
+
+
+
+```{r}
+
+### minimum QC read count threshold
+min_reads <- 1000
+
+### number of permutations for the PERMANOVA test
+perm <- 999 ## The number of permutations to do for PERMANOVA. You can start with 99 permutations to run faster while developing the code, then change it to 999 permutations for higher resolution.
+
+### rarefying subsample size 
+richness_subsample_size <- 1000
+
+### mapping file path
+mapping_file_fp <- here("CHOPMC-373_Redding_Shotgun_mapping_table.tsv")
+
+### preprocess summary results filepath
+preprocess_fp <- here("Data", "preprocess_summary.tsv")
+
+### read quality
+fastqc_fp = here("Data", 'fastqc_quality.tsv')
+
+### taxonomic assignment 
+feature_table_fp <- here("Data", "all_samples.tsv")
+```
+
+```{r sample_sheet_import, echo=FALSE}
+preprocess <- read.delim(preprocess_fp) %>%
+  rename(SampleID = Samples)
+
+s <- read.delim(mapping_file_fp) %>%
+  mutate(SampleID = as.character(SampleID), subject_id = as.character(subject_id)) %>%
+  mutate(isControl = grepl("extractempty|extractblank|EBneg|vibriolambda|mockdna|dnafree", SampleID, ignore.case = T)) %>%
+  left_join(preprocess, by="SampleID") %>%
+  mutate(Keep = input > min_reads) %>%
+  mutate(host_species = str_to_sentence(host_species)) %>%
+  mutate(study_group = str_to_sentence(study_group)) %>%
+  mutate(study_group = ifelse(subject_id %in% "Vroom", "72h", study_group))
+```
+
+
+```{r load kraken}
+o <- read_qiime_otu_table(feature_table_fp)
+
+counts <- o$counts
+colnames(counts) <- sub("\\.taxa$", "", colnames(counts))
+
+ta <- o$metadata %>%
+  enframe("Taxid", "Taxon") %>%
+  mutate(Taxon = str_remove(Taxon, "(; [kpcofgs]__)+$")) %>%
+  mutate(Taxon = gsub("[kpcofgs]__", "", Taxon)) 
+
+adf <- split_assignments(ta$Taxon) %>%
+  mutate(Species = ifelse(!is.na(Genus) & !is.na(Species), paste(Genus, Species), NA))
+rownames(adf) <- ta$Taxid
+rm(ta)
+
+# Delete human contamination and emp and empty samples
+is_empty_col <- colSums(counts) == 0
+is_human <- grepl("Chordata", adf$Phylum)
+is_empty <- rowSums(counts) == 0
+taxa_to_delete = is_human | is_empty
+adf <- adf[!taxa_to_delete,]
+counts <- counts[!taxa_to_delete,!is_empty_col]
+rm(is_human, is_empty, taxa_to_delete, is_empty_col)
+
+a <- simplify_assignments(adf, rank1 = "Phylum", rank2="Species")
+
+summed_cts <- rowsum(counts, a) 
+summed_props <- sweep(summed_cts, 2, colSums(summed_cts), "/")
+
+a_g <- simplify_assignments(adf, rank1="Phylum", rank2="Genus")
+summed_cts_g <- rowsum(counts, a_g) 
+summed_props_g <- sweep(summed_cts_g, 2, colSums(summed_cts_g), "/")
+
+a_p <- simplify_assignments(adf, rank1="Kingdom", rank2="Phylum")
+summed_cts_p <- rowsum(counts, a_p) 
+summed_props_p <- sweep(summed_cts_p, 2, colSums(summed_cts_p), "/")
+
+s <- merge(s, data.frame(kraken_counts= colSums(summed_cts)), by.x="SampleID", by.y="row.names", all.x=T)
+```
+
+```{r alpha}
+richness <- rarefy(t(counts), richness_subsample_size) %>%
+  enframe("SampleID", "Richness")
+  
+shannon <- diversity(t(counts)) %>%
+  enframe("SampleID", "Shannon")
+
+s <- s %>%
+  left_join(richness, by="SampleID") %>%
+  left_join(shannon, by="SampleID")
+
+rm(richness, shannon)
+```
+
+```{r beta}
+bc <- vegdist(t(summed_props))
+jd <- vegdist(t(summed_props), binary = T)
+```
+
+```{r save}
+
+save.image(file = here("Data", "preamble_data.RData"))
+
+```

@@ -1,0 +1,1491 @@
+---
+title: |
+  ![](CHOPMC_logo.pdf){width=5in}  
+  CHOPMC-373_Redding_Shotgun / Horse AMR analysis
+author: "Scott G. Daniel, Ph.D."
+date: \today
+geometry: margin=3cm
+output: 
+    pdf_document:
+        keep_tex: false
+        toc: true
+        toc_depth: 5
+---
+
+```{r setup, echo=FALSE}
+### ================
+###   knitr setup
+### ================
+library(knitr)
+opts_chunk$set(
+  tidy=FALSE,
+  cache=FALSE,
+  echo=FALSE,
+  warning=FALSE,
+  message=FALSE,
+  dpi=100,
+  fig.width=6,
+  fig.height=6,
+  fig.align = "center",
+  out.width = "100%"
+  )
+```
+
+```{r libraries, message=FALSE, warning=FALSE}
+library(here)
+library(ggbeeswarm)
+library(grid)
+library(magrittr)
+library(pander)
+library(pheatmap)
+library(usedist)
+library(qiimer)
+library(reshape2)
+library(jsonlite)
+library(vegan)
+library(ape)
+library(tidyverse)
+library(gghighlight)
+library(RColorBrewer)
+library(patchwork)
+library(kylemisc)
+library(ggpubr)
+library(GGally)
+library(glue)
+library(wesanderson)
+
+#MOAR cOLORS!!!
+library(ggsci)
+library(ghibli)
+library(qualpalr)
+library(emmeans)
+
+panderOptions("knitr.auto.asis", FALSE)
+#this also means that you have to put results='asis' in any block that has pander output
+#this lets you loop through variables and produce multiple pander tables and ggplots in a
+#single code block!
+
+```
+
+```{r functions}
+
+source(here("Scripts","Functions","common_functions.R"))
+source(here("Scripts","Functions","scott_daniel_useful_R_functions.R"))
+source(here("Scripts","Functions","for_functional_analysis.R"))
+
+```
+
+```{r load savepoint, include=FALSE}
+#you can load data here if you have a savepoint from your main R markdown (but remember that libraries do not get saved)
+load(here("Data","after_taxa_analysis.RData"))
+
+table_iterator <- function() {
+  table_count <- 0
+  function(x, title = "table_export", ...) {
+    table_count <<- table_count + 1
+    if (table_count < 10) {
+      table_count <- paste0("0", table_count)
+    }
+    table_name <- paste0(title, "_", table_count, ".csv")
+    table_path <- here("Output", table_name)
+    write_csv(x = x, file = table_path, ...)
+    print(paste0("Full table saved as ", table_name, "."))
+  }
+}
+
+table_export <- table_iterator()
+```
+
+# Abx Resistance Genes
+
+Reads were aligned to the Comprehensive Antibiotic Resistance Database (https://card.mcmaster.ca) to assess the antibiotic resistance potential for each sample.
+
+```{r loading CARD}
+library(ontologyIndex)
+obo <- get_ontology(here("Data","aro.obo"), extract_tags = "everything")
+ontology_CARD <- data.frame(ARO = obo$id, name = obo$name) # all CARD ontology, which includes genes and antibiotic drugs
+rownames(ontology_CARD) <- NULL
+
+cd_desc <- read_tsv(here("Data","20230525_protein_fasta_protein_homolog_model.txt")) %>%
+  select(geneID, ARO) %>%
+  unique() %>%
+  inner_join(data.frame(ARO = obo$id, description = obo$name), by = "ARO") #just abx resistance ARO descriptions
+
+CARD <- read_table_if_no_rds(here("Data", "sbx_gene_clusters", "20230525_protein_fasta_protein_homolog_model"), name_of_table = CARD, rds_file_name = "CARD.rds") %>%
+  left_join(cd_desc, by = "geneID")
+
+gene_lengths <- read_tsv(here("Data","CARD_lengths.tsv"), col_names = c("Description","AA_length")) %>%
+  mutate(nt_length = AA_length * 3) %>%
+  mutate(ARO = str_extract(Description, "ARO:[0-9]{7}")) %>%
+  mutate(ARO = str_trim(ARO)) %>%
+  mutate(geneID = str_extract(Description, "(?<=gb\\|)[\\w.]+(?=\\|ARO)")) %>%
+  select(ARO, nt_length)
+
+CARD_rpkm <- CARD %>%
+  left_join(gene_lengths, by = c("ARO")) %>%
+  right_join(s %>% select(SampleID, nonhost), by = "SampleID") %>%
+  mutate(millr = nonhost / 1E6) %>%
+  mutate(kbase = nt_length / 1E3) %>%
+  mutate(RPKM = count / millr / kbase) %>%
+  group_by(ARO) %>%
+  filter(sum(count) > 0) %>%
+  mutate(RPKM_min = min(RPKM[RPKM > 0])) %>%
+  mutate(RPKM = ifelse(RPKM == 0, RPKM_min/2, RPKM)) %>%
+  ungroup() %>%
+  select(-RPKM_min, -database)
+
+CARD_annotation <- read_tsv(here("Data", "aro_categories_index.tsv"))
+
+colnames(CARD_annotation) <- c("geneID", "DNA_Accession", "AMR_Gene_Family", "Drug_Class", 
+"Resistance_Mechanism")
+
+```
+
+## Admit vs Discharge, stratified by length of Abx
+
+Here, the Discharge will be compared to Admit and stratified by length that the horses were on antibiotics (24hr or 72hr).
+
+```{r, results='asis'}
+## Subset the metadata file to only keep the samples you would like to test on
+s_toTest <- s2 %>%
+  filter(host_species %in% c("Horse")) %>%
+  filter(Keep) %>%
+  filter(!isControl) %>%
+  mutate(study_group = fct_relevel(study_group, "24h", "72h")) %>%
+  mutate(timepoint = fct_relevel(timepoint, "Admit")) %>%
+  mutate(time_study = paste0(timepoint, study_group)) %>%
+  mutate(time_study = fct_relevel(time_study, "Admit24h", "Admit72h", "AdmitMed", "Discharge24h", "Discharge72h")) %>%
+  droplevels()
+
+## Set colors for each factor ahead of time so they are consistent through the report.
+ann_colors = list(
+  time_study = setNames(brewer.pal(length(levels(s_toTest$time_study)), "Set3"), levels(s_toTest$time_study)))
+ann_colors = list(time_study = c(Admit24h = "#8DD3C7", Admit72h = "#FFFFB3", 
+AdmitMed = "#BEBADA", Discharge24h = "#FB8072", Discharge72h = "#80B1D3", 
+DischargeMed = "#FDB462"))
+
+min_percent = 0.99
+
+```
+
+### RPKM analysis
+
+ARO counts from the CARD database were transformed in the following way: counts were divided by the million mapped nonhost reads and the ARO length in kilobases, thus RPKM (Reads per Kilobase per Million mapped reads). Zeros were then replaced by 1/2 the minimum value for any given ARO. Finally, we will restrict our initial analysis to the top 100 genes that are present (i.e. nonzero before transformation) in at least `r min_percent` of samples.
+
+```{r}
+
+RPKM_toTest <- CARD_rpkm %>%
+  filter(SampleID %in% s_toTest$SampleID) %>%
+  group_by(ARO) %>%
+  mutate(perc_present = mean(count > 0)) %>%
+  mutate(mean_RPKM = mean(RPKM)) %>%
+  ungroup() %>%
+  filter(perc_present > min_percent) %>%
+  mutate(log2_RPKM = log2(RPKM))
+
+top100 <- RPKM_toTest %>%
+  select(ARO, mean_RPKM) %>%
+  unique() %>%
+  slice_max(order_by = mean_RPKM, n = 100)
+
+RPKM_toTest %<>% filter(ARO %in% top100$ARO)
+
+```
+
+#### Top 100
+
+##### Tests
+
+Linear mixed-effect models were used to estimate the change in RPKM of selected ARO between study time_studys. The RPKMs were log2 transformed. Multiple tests were adjusted for false discovery rate using Benjamini-Hochberg method. Only the terms with p<0.05 are shown in the table below. `r length(unique(RPKM_toTest$ARO))` genes were tested. Exported table includes all results.
+
+```{r, results='asis'}
+
+my_form <- "log2_RPKM ~ Age + Sex + time_study"
+
+summaries_df <- run_lmer_on_props(factor_to_test = "ARO", props_toTest = RPKM_toTest, s_toTest = s_toTest, form1 = my_form, p_cutoff = 1, rep_mes_label = "subject_id") %>%
+  mutate(term = str_remove(term, "time_study")) %>%
+  left_join(cd_desc %>% select(ARO, description), by = "ARO")
+
+summaries_df %>%
+  filter(p.value < 0.05) %>%
+  pander(split.table=Inf, digits=2, caption = glue("Linear model with the formula: {my_form}"))
+table_export(summaries_df, "gene_table_export")
+
+```
+
+##### Boxplot
+
+```{r fig.height=12, fig.width=8}
+
+to_select <- summaries_df %>%
+  filter(fdr < 0.05) %>%
+  pull(ARO) %>%
+  unique()
+
+number_of_blocks <- ceiling(length(to_select) / 10)
+chunk_it <- function(x,n) split(x, cut(seq_along(x), n, labels = FALSE))
+
+if (number_of_blocks > 1) {
+  my_blocks <- chunk_it(to_select, number_of_blocks)
+} else {
+  my_blocks <- list(to_select)
+}
+
+for (i in 1:number_of_blocks) {
+  subset <- my_blocks[[i]]
+
+my_plot <- RPKM_toTest %>%
+  right_join(s_toTest, by = "SampleID") %>%
+  filter(ARO %in% subset) %>%
+  mutate(label = paste(ARO, description, sep = "\n")) %>%
+  mutate(label = reorder(label, -RPKM)) %>%
+  ggplot(aes(x=time_study, y=RPKM, color=time_study)) +
+  geom_boxplot(outlier.alpha=0) +
+  geom_quasirandom() +
+  facet_wrap(~label, scales="free", ncol = 5) +
+  scale_color_manual(values=ann_colors$time_study) +
+  scale_y_continuous(trans = "log10") +
+  theme_bw() +
+  theme(
+    axis.text.x=element_text(angle=90, hjust=1, vjust=0.5),
+    panel.grid = element_blank(),
+    strip.background = element_blank(),
+    legend.position = "bottom"
+  ) +
+  labs(
+    y="RPKM",
+    x=""
+  )
+
+plot(my_plot)
+
+ggsave(here("Output", glue("horses_ARO_{i}.pdf")), height = 6, width = 8)
+
+}
+
+```
+
+##### Post-hoc multiple comparisons
+
+Since we are also interested in other time_study-to-time_study comparisons, we will do post-hoc multiple comparisons with estimated marginal means. Exported table includes all results.
+
+```{r, results='asis'}
+
+# summaries_df <- RPKM_toTest %>%
+#   inner_join(s_toTest, by = "SampleID") %>%
+#   group_by(ARO) %>%
+#   do(broom::tidy(emmeans(object = nlme::lme(log2_RPKM ~ Age + Sex + time_study, data=., na.action=na.omit, random = ~1|subject_id), specs = tukey ~ time_study, reverse = T)$contrasts)) %>%
+#   ungroup() %>%
+#   select(-term, -null.value) %>%
+#   left_join(cd_desc %>% select(ARO, description), by = "ARO")
+# 
+# save(summaries_df, file = here("Data", "100_ARO_posthoc_tests_horse.RDS"))
+
+load(file = here("Data", "100_ARO_posthoc_tests_horse.RDS"))
+
+summaries_df %>%
+  filter(adj.p.value < 0.05) %>%
+  pander(split.table=Inf, digits=2, caption = paste(glue("Estimated marginal means pairwise statistical tests on previous linear model. P-value is adjusted with Tukey's method and filtered by < 0.05.")))
+
+table_export(x = summaries_df, title = "gene_table_export")
+
+```
+
+##### Heatmap
+
+We will make a heatmap. We will filter to ARO's that were significant in at least one comparison. We will scale the RPKM's per ARO to better compare between ARO's.
+
+```{r, fig.width=30, fig.height=50, out.width="80%"}
+
+just_sig <- summaries_df %>%
+  filter(adj.p.value < 0.05)
+
+my_AROs <- summaries_df %>%
+  pivot_wider(id_cols = ARO, names_from = contrast, values_from = adj.p.value) %>%
+  filter(ARO %in% just_sig$ARO)
+
+CARD_subset <- CARD_rpkm %>%
+  filter(SampleID %in% s_toTest$SampleID) %>%
+  filter(ARO %in% my_AROs$ARO)
+
+ARO_z_score <- CARD_subset %>%
+  group_by(ARO) %>%
+  mutate(ARO_zscore = scale(RPKM)) %>%
+  ungroup()
+
+ARO_heatmap <- ARO_z_score %>%
+  spread_to_numeric_matrix(row_key = "description", col_key = "SampleID", value = "ARO_zscore")
+
+group_by <- c("time_study")
+grps <- c(group_by)
+grps_symbol <- syms(grps)
+s_toTest %<>% arrange(!!!grps_symbol)
+
+anno <- s_toTest[,grps] %>% as.data.frame()
+rownames(anno) <- s_toTest$SampleID
+colnames(anno) <- grps
+
+ARO_heatmap <- ARO_heatmap[,rownames(anno)] #sorts the heatmap according to the annotation
+
+paletteLength <- 50
+myColor <- colorRampPalette(c("yellow", "white", "blue"))(paletteLength)
+myBreaks <- c(seq(min(ARO_heatmap), 0, length.out=ceiling(paletteLength/2) + 1), 
+              seq(max(ARO_heatmap)/paletteLength, max(ARO_heatmap), length.out=floor(paletteLength/2)))
+
+pheatmap(
+  ARO_heatmap,
+  annotation = anno,
+  color = myColor,
+  breaks = myBreaks,
+  clustering_distance_rows = "manhattan",
+  cluster_cols = F,
+  cellwidth = 9, cellheight = 9, fontsize = 10,
+  width = 24, height = 12, annotation_colors = ann_colors, show_colnames = T,
+main = "Z-score of AMR genes in horses")
+
+fig_name = "sig_changed_ARO_zscore_heatmap_horses.pdf"
+print(glue("Figure saved as {fig_name}"))
+
+pheatmap(
+  ARO_heatmap,
+  annotation = anno,
+  color = myColor,
+  breaks = myBreaks,
+  clustering_distance_rows = "manhattan",
+  cluster_cols = F,
+  cellwidth = 12, cellheight = 12, fontsize = 12,
+  width = 24, height = 12, annotation_colors = ann_colors, show_colnames = T,
+main = "Z-score of AMR genes in horses", filename = here("Output", fig_name))
+
+```
+
+##### Richness by Study group
+
+Here, we will plot the unique number of ARO's across study groups. And create a table.
+
+```{r}
+
+CARD_ARO_richness <- CARD %>%
+  inner_join(s_toTest) %>%
+  filter(count > 0) %>%
+  select(SampleID, ARO) %>%
+  unique() %>%
+  group_by(SampleID) %>%
+  summarise(Richness_ARO = n())
+
+my_plot <- CARD_ARO_richness %>%
+  inner_join(s_toTest, by = "SampleID") %>%
+  ggplot(aes(x = time_study, y = Richness_ARO)) + 
+  geom_boxplot(outlier.alpha = 0) +
+  geom_quasirandom() +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle=45, hjust = 1)) +
+  xlab(label = "Zinc interact") + ylab("Average Richness (number of unique AROs)") +
+  ggtitle(label = "Richness")
+
+my_plot
+
+ggsave(here("Output", "richness of AROs horses.pdf"), height = 6, width = 6)
+
+my_table <- CARD_ARO_richness %>%
+  inner_join(s_toTest, by = "SampleID") %>%
+  group_by(time_study) %>%
+  summarise(mean_richness = mean(Richness_ARO), sd_richness = sd(Richness_ARO), n = n())
+
+my_table %>%
+  write_csv(here("Output", "Richness of AROs per study group.csv"))
+
+```
+
+##### Statistical test
+
+Might as well do a statistical test.
+
+```{r, results='asis'}
+my_lm <- CARD_ARO_richness %>%
+  inner_join(s_toTest, by = "SampleID") %>%
+  nlme::lme(Richness_ARO ~ Age + Sex + time_study, data = ., random = ~1|subject_id)
+
+summaries_df <- broom::tidy(emmeans(object = my_lm, specs = tukey ~ time_study, reverse = T)$contrasts) %>%
+  select(-term, -null.value)
+
+table_export(summaries_df, "gene_table_export")
+
+summaries_df %>%
+  pander(split.cells = Inf, digits = 2)
+
+
+```
+
+#### 50% Threshold
+
+Here we will filter to ARO's that are nonzero in at least 50% of samples.
+
+```{r}
+
+min_percent <- 0.5
+
+RPKM_toTest <- CARD_rpkm %>%
+  filter(SampleID %in% s_toTest$SampleID) %>%
+  group_by(ARO) %>%
+  mutate(perc_present = mean(count > 0)) %>%
+  mutate(mean_RPKM = mean(RPKM)) %>%
+  ungroup() %>%
+  filter(perc_present > min_percent) %>%
+  mutate(log2_RPKM = log2(RPKM))
+
+```
+
+##### Tests
+
+Linear mixed-effect models were used to estimate the change in RPKM of selected ARO between study groups. The RPKMs were log2 transformed. Multiple tests were adjusted for false discovery rate using Benjamini-Hochberg method. Only the terms with p<0.05 are shown in the table below. `r length(unique(RPKM_toTest$ARO))` genes were tested. Exported table includes all results.
+
+```{r, results='asis'}
+
+my_form <- "log2_RPKM ~ Age + Sex + time_study"
+
+summaries_df <- run_lmer_on_props(factor_to_test = "ARO", props_toTest = RPKM_toTest, s_toTest = s_toTest, form1 = my_form, p_cutoff = 1, rep_mes_label = "subject_id") %>%
+  mutate(term = str_remove(term, "time_study")) %>%
+  left_join(cd_desc %>% select(ARO, description), by = "ARO")
+
+# summaries_df %>%
+#   filter(p.value < 0.05) %>%
+#   pander(split.table=Inf, digits=2, caption = glue("Linear model with the formula: {my_form}"))
+
+table_export(summaries_df, "gene_table_export")
+
+```
+
+##### Boxplot
+
+See individual pdfs.
+
+```{r fig.height=12, fig.width=8}
+
+to_select <- summaries_df %>%
+  filter(fdr < 0.05) %>%
+  pull(ARO) %>%
+  unique()
+
+number_of_blocks <- ceiling(length(to_select) / 10)
+chunk_it <- function(x,n) split(x, cut(seq_along(x), n, labels = FALSE))
+
+if (number_of_blocks > 1) {
+  my_blocks <- chunk_it(to_select, number_of_blocks)
+} else {
+  my_blocks <- list(to_select)
+}
+
+for (i in 1:number_of_blocks) {
+  subset <- my_blocks[[i]]
+
+my_plot <- RPKM_toTest %>%
+  right_join(s_toTest, by = "SampleID") %>%
+  filter(ARO %in% subset) %>%
+  mutate(label = paste(ARO, description, sep = "\n")) %>%
+  mutate(label = reorder(label, -RPKM)) %>%
+  ggplot(aes(x=time_study, y=RPKM, color=time_study)) +
+  geom_boxplot(outlier.alpha=0) +
+  geom_quasirandom() +
+  facet_wrap(~label, scales="free", ncol = 5) +
+  scale_color_manual(values=ann_colors$time_study) +
+  scale_y_continuous(trans = "log10") +
+  theme_bw() +
+  theme(
+    axis.text.x=element_text(angle=90, hjust=1, vjust=0.5),
+    panel.grid = element_blank(),
+    strip.background = element_blank(),
+    legend.position = "bottom"
+  ) +
+  labs(
+    y="RPKM",
+    x=""
+  )
+
+ggsave(here("Output", glue("horses_ARO_50perc_thresh_{i}.pdf")), height = 6, width = 8)
+
+}
+
+```
+
+##### Post-hoc multiple comparisons
+
+Since we are also interested in other group-to-group comparisons, we will do post-hoc multiple comparisons with estimated marginal means. Exported table includes all results.
+
+```{r, results='asis'}
+
+# summaries_df <- RPKM_toTest %>%
+#   inner_join(s_toTest, by = "SampleID") %>%
+#   group_by(ARO) %>%
+#   do(broom::tidy(emmeans(object = nlme::lme(log2_RPKM ~ Age + Sex + time_study, data=., na.action=na.omit, random = ~1|subject_id), specs = tukey ~ time_study, reverse = T)$contrasts)) %>%
+#   ungroup() %>%
+#   select(-term, -null.value) %>%
+#   left_join(cd_desc %>% select(ARO, description), by = "ARO")
+# 
+# save(summaries_df, file = here("Data", "50perc_tresh_posthoc_tests_horse.RDS"))
+
+load(file = here("Data", "50perc_tresh_posthoc_tests_horse.RDS"))
+
+# summaries_df %>%
+#   filter(adj.p.value < 0.05) %>%
+#   pander(split.table=Inf, digits=2, caption = paste(glue("Estimated marginal means pairwise statistical tests on previous linear model. P-value is adjusted with Tukey's method and filtered by < 0.05.")))
+
+table_export(x = summaries_df, title = "gene_table_export")
+
+```
+
+##### Heatmap
+
+```{r}
+sig_cutoff <- 0.01
+```
+
+
+We will make a heatmap. We will filter to ARO's that were significant (adj.p.value < `sig_cutoff`) in at least one comparison. We will scale the RPKM's per ARO to better compare between ARO's.
+
+```{r, fig.width=30, fig.height=50, out.width="80%"}
+
+just_sig <- summaries_df %>%
+  filter(adj.p.value < sig_cutoff)
+
+my_AROs <- summaries_df %>%
+  pivot_wider(id_cols = ARO, names_from = contrast, values_from = adj.p.value) %>%
+  filter(ARO %in% just_sig$ARO)
+
+CARD_subset <- CARD_rpkm %>%
+  filter(SampleID %in% s_toTest$SampleID) %>%
+  filter(ARO %in% my_AROs$ARO)
+
+ARO_z_score <- CARD_subset %>%
+  group_by(ARO) %>%
+  mutate(ARO_zscore = scale(RPKM)) %>%
+  ungroup()
+
+ARO_heatmap <- ARO_z_score %>%
+  spread_to_numeric_matrix(row_key = "description", col_key = "SampleID", value = "ARO_zscore")
+
+group_by <- c("time_study")
+grps <- c(group_by)
+grps_symbol <- syms(grps)
+s_toTest %<>% arrange(!!!grps_symbol)
+
+anno <- s_toTest[,grps] %>% as.data.frame()
+rownames(anno) <- s_toTest$SampleID
+colnames(anno) <- grps
+
+ARO_heatmap <- ARO_heatmap[,rownames(anno)] #sorts the heatmap according to the annotation
+
+paletteLength <- 50
+myColor <- colorRampPalette(c("yellow", "white", "blue"))(paletteLength)
+myBreaks <- c(seq(min(ARO_heatmap), 0, length.out=ceiling(paletteLength/2) + 1), 
+              seq(max(ARO_heatmap)/paletteLength, max(ARO_heatmap), length.out=floor(paletteLength/2)))
+
+pheatmap(
+  ARO_heatmap,
+  annotation = anno,
+  color = myColor,
+  breaks = myBreaks,
+  clustering_distance_rows = "manhattan",
+  cluster_cols = F,
+  cellwidth = 9, cellheight = 9, fontsize = 10,
+  width = 24, height = 12, annotation_colors = ann_colors, show_colnames = T,
+main = "Z-score of AMR genes in horses")
+
+fig_name = "sig_changed_ARO_zscore_heatmap_horses_50perc_thresh.pdf"
+print(glue("Figure saved as {fig_name}"))
+
+pheatmap(
+  ARO_heatmap,
+  annotation = anno,
+  color = myColor,
+  breaks = myBreaks,
+  clustering_distance_rows = "manhattan",
+  cluster_cols = F,
+  cellwidth = 12, cellheight = 12, fontsize = 12,
+  width = 24, height = 12, annotation_colors = ann_colors, show_colnames = T,
+main = "Z-score of AMR genes in horses", filename = here("Output", fig_name))
+
+```
+
+
+#### Group by AMR Gene Family
+
+Here, we will first time_study ARO genes by their AMR Gene Families and then sum up the RPKM per family. We will look at the top 100 by mean RPKM.
+
+```{r}
+
+AMR100 <- CARD_rpkm %>%
+  filter(SampleID %in% s_toTest$SampleID) %>%
+  left_join(CARD_annotation, by = "geneID") %>%
+  group_by(SampleID, AMR_Gene_Family) %>%
+  summarise(sum_rpkm = sum(RPKM)) %>%
+  group_by(AMR_Gene_Family) %>%
+  summarise(x = mean(sum_rpkm)) %>%
+  slice_max(order_by = x, n = 100)
+
+CARD_AMR <- CARD_rpkm %>%
+  left_join(CARD_annotation, by = "geneID") %>%
+  group_by(SampleID, AMR_Gene_Family) %>%
+  summarise(sum_rpkm = sum(RPKM)) %>%
+  filter(AMR_Gene_Family %in% AMR100$AMR_Gene_Family) %>%
+  mutate(log2_sum_rpkm = log2(sum_rpkm))
+
+```
+
+##### Tests
+
+Linear mixed-effect models were used to estimate the change in RPKM of selected AMR gene family between study time_studys. The RPKMs were log2 transformed. Multiple tests were adjusted for false discovery rate using Benjamini-Hochberg method. Only the terms with p<0.05 are shown in the table below.
+
+```{r, results='asis'}
+
+my_form <- "log2_sum_rpkm ~ Age + Sex + time_study"
+
+temp_df <- tibble()
+
+for (selected_gene in unique(CARD_AMR$AMR_Gene_Family)) {
+
+  props_toTest <- CARD_AMR %>%
+  filter(AMR_Gene_Family %in% selected_gene) %>%
+  inner_join(s_toTest, by = "SampleID")
+
+  possible_error <- try(tiny_df <- tidy_lmer(nlme::lme(as.formula(my_form), random = as.formula("~ 1 | subject_id"), data=props_toTest, na.action=na.omit)) %>% filter(term != '(Intercept)'))
+
+  tiny_df$AMR_Gene_Family <- selected_gene
+
+  if (class(possible_error)[1] %in% "try-error") {
+    print(glue("Error with {selected_gene}"))
+    tiny_df <- tibble()
+  }
+
+  temp_df <- bind_rows(temp_df, tiny_df)
+
+}
+
+summaries_df <- temp_df %>%
+  group_by(term) %>%
+  mutate(fdr = p.adjust(p.value, method="BH")) %>%
+  ungroup() %>%
+  select(AMR_Gene_Family, everything())
+
+summaries_df %>%
+  filter(fdr < 0.05) %>%
+  mutate(term = str_remove(term, "time_study")) %>%
+  pander(split.table=Inf, digits=2, caption = glue("Linear model with the formula: {my_form}"))
+
+table_export(summaries_df, "gene_table_export")
+```
+
+##### Boxplot
+
+```{r fig.height=12, fig.width=8}
+
+to_select <- summaries_df %>%
+  filter(fdr < 0.05) %>%
+  pull(AMR_Gene_Family) %>%
+  unique()
+
+number_of_blocks <- ceiling(length(to_select) / 7)
+my_blocks <- chunk_it(to_select, number_of_blocks)
+
+for (i in 1:number_of_blocks) {
+  subset <- my_blocks[[i]]
+
+my_plot <- CARD_AMR %>%
+  right_join(s_toTest, by = "SampleID") %>%
+  filter(AMR_Gene_Family %in% subset) %>%
+  mutate(AMR_Gene_Family = reorder(AMR_Gene_Family, -sum_rpkm)) %>%
+  ggplot(aes(x=time_study, y=sum_rpkm, color=time_study)) +
+  geom_boxplot(outlier.alpha=0) +
+  geom_quasirandom() +
+  facet_wrap(~AMR_Gene_Family, scales="free", ncol = 4, strip.position = "right") +
+  scale_color_manual(values=ann_colors$time_study) +
+  scale_y_continuous(trans = "log10") +
+  theme_bw() +
+  theme(
+    axis.text.x=element_text(angle=90, hjust=1, vjust=0.5),
+    panel.grid = element_blank(),
+    strip.background = element_blank(),
+    legend.position = "bottom"
+  ) +
+  labs(
+    y="sum_RPKM",
+    x=""
+  )
+
+plot(my_plot)
+
+ggsave(here("Output", glue("horses_AMRgenefamily_{i}.pdf")), height = 8, width = 6)
+
+}
+
+```
+
+##### Post-hoc multiple comparisons
+
+Since we are also interested in other time_study-to-time_study comparisons, we will do post-hoc multiple comparisons with estimated marginal means. Exported table includes all results.
+
+```{r, results='asis'}
+
+#filtering out VHH beta-lactamase because its the same in every group
+#and VHW beta-lactamase because it throws an error
+
+# summaries_df <- CARD_AMR %>%
+#   filter(!AMR_Gene_Family %in% c("VHW beta-lactamase", "VHH beta-lactamase")) %>%
+#   inner_join(s_toTest, by = "SampleID") %>%
+#   group_by(AMR_Gene_Family) %>%
+#   do(broom::tidy(emmeans(object = nlme::lme(log2_sum_rpkm ~ Age + Sex + time_study, data=., na.action=na.omit, random = ~1|subject_id), specs = tukey ~ time_study, reverse = T)$contrasts)) %>%
+#   ungroup() %>%
+#   select(-term, -null.value)
+# 
+# save(summaries_df, file = here("Data", "top100_AMRgenefamily_posthoc_tests_horse.RDS"))
+
+load(file = here("Data", "top100_AMRgenefamily_posthoc_tests_horse.RDS"))
+
+summaries_df %>%
+  filter(adj.p.value < 0.05) %>%
+  pander(split.table=Inf, digits=2, caption = paste(glue("Estimated marginal means pairwise statistical tests on previous linear model. P-value is adjusted with Tukey's method and filtered by < 0.05.")))
+
+table_export(x = summaries_df, title = "gene_table_export")
+
+```
+
+##### Heatmap
+
+```{r}
+sig_cutoff <- 0.05
+```
+
+Heatmap of these AMR gene families with adj.p.value cutoff of `sig_cutoff`.
+
+```{r, fig.width=30, fig.height=50, out.width="80%"}
+
+just_sig <- summaries_df %>%
+  filter(adj.p.value < sig_cutoff)
+
+CARD_AMR_subset <- CARD_AMR %>%
+  filter(SampleID %in% s_toTest$SampleID) %>%
+  filter(AMR_Gene_Family %in% just_sig$AMR_Gene_Family)
+
+AMR_z_score <- CARD_AMR_subset %>%
+  group_by(AMR_Gene_Family) %>%
+  mutate(zscore = scale(sum_rpkm)) %>%
+  ungroup()
+
+AMR_heatmap <- AMR_z_score %>%
+  spread_to_numeric_matrix(row_key = "AMR_Gene_Family", col_key = "SampleID", value = "zscore")
+
+group_by <- c("time_study")
+grps <- c(group_by)
+grps_symbol <- syms(grps)
+s_toTest %<>% arrange(!!!grps_symbol)
+
+anno <- s_toTest[,grps] %>% as.data.frame()
+rownames(anno) <- s_toTest$SampleID
+colnames(anno) <- grps
+
+AMR_heatmap <- AMR_heatmap[,rownames(anno)] #sorts the heatmap according to the annotation
+order_for_later <- rownames(anno)
+
+paletteLength <- 50
+myColor <- colorRampPalette(c("yellow", "white", "blue"))(paletteLength)
+myBreaks <- c(seq(min(AMR_heatmap), 0, length.out=ceiling(paletteLength/2) + 1), 
+              seq(max(AMR_heatmap)/paletteLength, max(AMR_heatmap), length.out=floor(paletteLength/2)))
+
+pheatmap(
+  AMR_heatmap,
+  annotation = anno,
+  color = myColor,
+  breaks = myBreaks,
+  clustering_distance_rows = "manhattan",
+  cluster_cols = F,
+  cellwidth = 9, cellheight = 9, fontsize = 10,
+  width = 24, height = 12, annotation_colors = ann_colors, show_colnames = T,
+main = "Z-score by AMR gene family in horses")
+
+fig_name = "sig_changed_AMR_gene_family_zscore_heatmap_horses.pdf"
+print(glue("Figure saved as {fig_name}"))
+
+pheatmap(
+  AMR_heatmap,
+  annotation = anno,
+  color = myColor,
+  breaks = myBreaks,
+  clustering_distance_rows = "manhattan",
+  cluster_cols = F,
+  cellwidth = 12, cellheight = 12, fontsize = 12,
+  width = 24, height = 12, annotation_colors = ann_colors, show_colnames = T,
+main = "Z-score by AMR gene family in horses", filename = here("Output", fig_name))
+
+```
+
+##### Second heatmap for figure construction
+
+```{r, fig.width=30, fig.height=50, out.width="80%"}
+
+just_sig <- summaries_df %>%
+  filter(adj.p.value < sig_cutoff)
+
+CARD_AMR_subset <- CARD_AMR %>%
+  filter(SampleID %in% s_toTest$SampleID) %>%
+  filter(AMR_Gene_Family %in% just_sig$AMR_Gene_Family)
+
+AMR_z_score <- CARD_AMR_subset %>%
+  group_by(AMR_Gene_Family) %>%
+  mutate(zscore = scale(sum_rpkm)) %>%
+  ungroup()
+
+AMR_heatmap <- AMR_z_score %>%
+  spread_to_numeric_matrix(row_key = "AMR_Gene_Family", col_key = "SampleID", value = "zscore")
+
+s_temp <- s_toTest %>%
+  column_to_rownames(var = "SampleID")
+s_temp <- s_temp[order_for_later,]
+AMR_heatmap <- AMR_heatmap[,order_for_later]
+colnames(AMR_heatmap) <- s_temp$HorseID
+
+paletteLength <- 50
+myColor <- colorRampPalette(c("yellow", "white", "blue"))(paletteLength)
+myBreaks <- c(seq(min(AMR_heatmap), 0, length.out=ceiling(paletteLength/2) + 1), 
+              seq(max(AMR_heatmap)/paletteLength, max(AMR_heatmap), length.out=floor(paletteLength/2)))
+
+pheatmap(
+  AMR_heatmap,
+  color = myColor,
+  breaks = myBreaks,
+  clustering_distance_rows = "manhattan",
+  cluster_cols = F,
+  cellwidth = 9, cellheight = 9, fontsize = 10,
+  width = 24, height = 12, show_colnames = T,
+main = "Z-score by AMR gene family in horses")
+
+fig_name = "sig_changed_AMR_gene_family_zscore_heatmap_horses_A.pdf"
+print(glue("Figure saved as {fig_name}"))
+
+pheatmap(
+  AMR_heatmap,
+  color = myColor,
+  breaks = myBreaks,
+  clustering_distance_rows = "manhattan",
+  cluster_cols = F,
+  cellwidth = 12, cellheight = 12, fontsize = 12,
+  width = 24, height = 12, show_colnames = T,
+main = "Z-score by AMR gene family in horses", filename = here("Output", fig_name))
+
+```
+
+#### Group by Drug Class
+
+Here, we will first group ARO genes by their Drug Class and then sum up the RPKM per class. We will look at the top 100 by mean RPKM.
+
+```{r}
+
+DC100 <- CARD_rpkm %>%
+  filter(SampleID %in% s_toTest$SampleID) %>%
+  left_join(CARD_annotation, by = "geneID") %>%
+  filter(!Drug_Class %in% "N/A") %>%
+  group_by(SampleID, Drug_Class) %>%
+  summarise(sum_rpkm = sum(RPKM)) %>%
+  group_by(Drug_Class) %>%
+  summarise(x = mean(sum_rpkm)) %>%
+  slice_max(order_by = x, n = 100)
+
+CARD_DC <- CARD_rpkm %>%
+  left_join(CARD_annotation, by = "geneID") %>%
+  group_by(SampleID, Drug_Class) %>%
+  summarise(sum_rpkm = sum(RPKM)) %>%
+  filter(Drug_Class %in% DC100$Drug_Class) %>%
+  mutate(log2_sum_rpkm = log2(sum_rpkm))
+
+```
+
+##### Tests
+
+Linear mixed-effect models were used to estimate the change in RPKM of selected AMR gene family between study time_studys. The RPKMs were log2 transformed. Multiple tests were adjusted for false discovery rate using Benjamini-Hochberg method. Only the terms with p<0.05 are shown in the table below.
+
+```{r, results='asis'}
+
+my_form <- "log2_sum_rpkm ~ Age + Sex + time_study"
+
+summaries_df <- run_lmer_on_props(factor_to_test = "Drug_Class", props_toTest = CARD_DC, s_toTest = s_toTest, form1 = my_form, p_cutoff = 1, rep_mes_label = "subject_id") %>%
+  mutate(term = str_remove(term, "time_study"))
+
+summaries_df %>%
+  filter(fdr < 0.05) %>%
+  pander(split.table=Inf, digits=2, caption = glue("Linear model with the formula: {my_form}"))
+table_export(summaries_df, "gene_table_export")
+```
+
+##### Boxplot
+
+```{r fig.height=12, fig.width=8}
+
+to_select <- summaries_df %>%
+  filter(fdr < 0.05) %>%
+  pull(Drug_Class) %>%
+  unique()
+
+number_of_blocks <- ceiling(length(to_select) / 7)
+my_blocks <- chunk_it(to_select, number_of_blocks)
+
+for (i in 1:number_of_blocks) {
+  subset <- my_blocks[[i]]
+
+my_plot <- CARD_DC %>%
+  right_join(s_toTest, by = "SampleID") %>%
+  filter(Drug_Class %in% subset) %>%
+  mutate(Drug_Class = reorder(Drug_Class, -sum_rpkm)) %>%
+  ggplot(aes(x=time_study, y=sum_rpkm, color=time_study)) +
+  geom_boxplot(outlier.alpha=0) +
+  geom_quasirandom() +
+  facet_wrap(~Drug_Class, scales="free", ncol = 4, strip.position = "right") +
+  scale_color_manual(values=ann_colors$time_study) +
+  scale_y_continuous(trans = "log10") +
+  theme_bw() +
+  theme(
+    axis.text.x=element_text(angle=90, hjust=1, vjust=0.5),
+    panel.grid = element_blank(),
+    strip.background = element_blank(),
+    legend.position = "bottom"
+  ) +
+  labs(
+    y="sum_RPKM",
+    x=""
+  )
+
+plot(my_plot)
+
+ggsave(here("Output", glue("horses_ARO_drugclass_{i}.pdf")), height = 8, width = 6)
+
+}
+
+```
+
+##### Richness by Drug Class
+
+Here, we will plot the unique number of ARO's per drug class across study groups. We will filter to the top 19 that changed in the linear models.
+
+```{r}
+
+top19 <- summaries_df %>%
+  group_by(term) %>%
+  slice_min(fdr, n = 19) %>%
+  ungroup() %>%
+  slice_min(fdr, n = 25) %>%
+  select(Drug_Class) %>%
+  unique()
+
+CARD_DC_richness <- CARD %>%
+  left_join(CARD_annotation, by = "geneID") %>%
+  inner_join(s_toTest) %>%
+  filter(count > 0) %>%
+  select(time_study, Drug_Class, ARO) %>%
+  unique() %>%
+  group_by(time_study, Drug_Class) %>%
+  summarise(Richness = n()) %>%
+  filter(!Drug_Class %in% "N/A") %>%
+  filter(Drug_Class %in% top19$Drug_Class) #%>%
+  # mutate(Drug_Class = str_trunc(Drug_Class, 30))
+
+my_plot <- ggplot(CARD_DC_richness, aes(fill=Drug_Class, x = time_study, y = Richness)) + 
+  geom_bar(stat="identity", position = "stack", width = 0.8) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle=45, hjust = 1)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  xlab(label = "time_study") + ylab("Average Richness (number of unique AMRs)") +
+  viridis::scale_fill_viridis(option = "turbo", discrete = T, begin = 0, end = 1, name="Drug class", labels = function(x) str_wrap(x, width = 30)) + # rainbow
+  #scale_fill_igv() +
+  labs(x = "")
+
+my_plot
+
+ggsave(here("Output", "richness of drug classes horses.pdf"), height = 12, width = 12)
+
+CARD %>%
+  left_join(CARD_annotation, by = "geneID") %>%
+  inner_join(s_toTest) %>%
+  filter(count > 0) %>%
+  select(time_study, Drug_Class, ARO) %>%
+  unique() %>%
+  group_by(time_study, Drug_Class) %>%
+  summarise(Richness = n()) %>%
+  filter(!Drug_Class %in% "N/A") %>%
+  write_csv(here("Output", "Richness of drug classes per study time_study.csv"))
+
+```
+
+##### Post-hoc multiple comparisons
+
+Since we are also interested in other time_study-to-time_study comparisons, we will do post-hoc multiple comparisons with estimated marginal means. Exported table includes all results.
+
+```{r, results='asis'}
+
+# summaries_df <- CARD_DC %>%
+#   inner_join(s_toTest, by = "SampleID") %>%
+#   group_by(Drug_Class) %>%
+#   do(broom::tidy(emmeans(object = nlme::lme(log2_sum_rpkm ~ Age + Sex + time_study, data=., na.action=na.omit, random = ~1|subject_id), specs = tukey ~ time_study, reverse = T)$contrasts)) %>%
+#   ungroup() %>%
+#   select(-term, -null.value)
+# 
+# save(summaries_df, file = here("Data", "top100_Drug_Class_posthoc_tests_horse.RDS"))
+
+load(file = here("Data", "top100_Drug_Class_posthoc_tests_horse.RDS"))
+
+summaries_df %>%
+  filter(adj.p.value < 0.05) %>%
+  pander(split.table=Inf, digits=2, caption = paste(glue("Estimated marginal means pairwise statistical tests on previous linear model. P-value is adjusted with Tukey's method and filtered by < 0.05.")))
+
+table_export(x = summaries_df, title = "gene_table_export")
+
+```
+
+# Rarefaction curve
+
+```{r}
+
+#make matrix with species as columns (ARO's) and rows as sites (samples)
+ARO_matrix <- CARD_rpkm %>%
+  filter(SampleID %in% s_toTest$SampleID) %>%
+  pivot_to_numeric_matrix(obs_col = SampleID, feature_col = ARO, value_col = count)
+
+#total number of species at each samples (row of data)
+S <- specnumber(ARO_matrix)
+
+# smallest sample total count
+raremax <- min(rowSums(ARO_matrix))
+
+# rarefy, w/ raremax as input
+Srare <- rarefy(ARO_matrix, raremax)
+
+#Plot rarefaction results
+par(mfrow = c(1,2))
+plot(S, Srare, xlab = "Observed No. of ARO's", 
+     ylab = "Rarefied No. of ARO's",
+     main = " plot(rarefy(BCI, raremax))")
+abline(0, 1)
+rarecurve(ARO_matrix, step = 20, 
+          sample = raremax, 
+          col = "blue", 
+          cex = 0.6,
+          main = "rarecurve()",
+          label = F)
+
+
+
+```
+
+```{r}
+
+pdf(file = here("Figures", "ARO_rarefaction_curves.pdf"), width = 8, height = 6)
+par(mfrow = c(1,2))
+plot(S, Srare, xlab = "Observed No. of ARO's", 
+     ylab = "Rarefied No. of ARO's",
+     main = " plot(rarefy(BCI, raremax))")
+abline(0, 1)
+rarecurve(ARO_matrix, step = 20, 
+          sample = raremax, 
+          col = "blue", 
+          cex = 0.6,
+          main = "rarecurve()",
+          label = F)
+dev.off()
+
+```
+
+Can we do it with ggplot?
+
+```{r}
+
+rare_df <- rarecurve(ARO_matrix, step = 20, 
+          sample = raremax, 
+          col = "blue", 
+          cex = 0.6,
+          main = "rarecurve()",
+          label = F, tidy = T)
+
+ggplot(rare_df, aes(x = Sample, y = Species, color = Site)) +
+  geom_path() +
+  theme_bw() +
+  labs(y = "ARO's", x = "Sample size") + 
+  scale_color_viridis_d(option = "turbo") +
+  theme(legend.position = "none",
+        axis.title.x = element_text(size=18),
+        axis.title.y = element_text(size=18))
+
+ggsave(filename = here("Figures", "rarefaction_curve_or_AROs_ggplot.pdf"), width = 5, height = 5, useDingbats = F)
+
+```
+
+# ZIBR on ARO's
+
+## Trying on one first: ARO:3000838
+
+```{r}
+
+library(ZIBR)
+
+# everything has to be numeric, like levels
+my_covariates <- s_toTest %>% 
+  select(SampleID, Age, Sex, time_study) %>%
+  column_to_rownames(var = "SampleID") %>%
+  mutate(Sex = ifelse(Sex %in% "F", 1, 2)) %>%
+  mutate(time_study = case_when(time_study %in% "Admit24h" ~ 1,
+                                time_study %in% "Admit72h" ~ 2,
+                                time_study %in% "AdmitMed" ~ 3,
+                                time_study %in% "Discharge24h" ~ 4,
+                                time_study %in% "Discharge72h" ~ 5,
+                                time_study %in% "DischargeMed" ~ 6))
+
+CARD_rpkm_with_zeros <- CARD %>%
+  left_join(gene_lengths, by = c("ARO")) %>%
+  left_join(s %>% select(SampleID, nonhost), by = "SampleID") %>%
+  mutate(millr = nonhost / 1E6) %>%
+  mutate(kbase = nt_length / 1E3) %>%
+  mutate(RPKM = count / millr / kbase) %>%
+  group_by(SampleID) %>%
+  mutate(rel_RPKM = RPKM / sum(RPKM)) %>%
+  ungroup() %>%
+  select(-database)
+
+my_time <- s_toTest %>%
+  mutate(timepoint = ifelse(timepoint %in% "Admit", 1, 2)) %>%
+  select(timepoint)
+
+Y <- CARD_rpkm_with_zeros %>%
+  filter(ARO %in% "ARO:3000838") %>%
+  select(SampleID, rel_RPKM) %>%
+  column_to_rownames(var = "SampleID")
+
+#making it the same order
+Y <- Y[rownames(my_covariates),]
+
+zibr_fit <- zibr(logistic_cov = my_covariates, beta_cov = my_covariates, subject_ind = s_toTest$subject_id, Y = Y, time_ind = my_time$timepoint, component_wise_test = T, quad_n = 30, verbose = F)
+
+zibr_fit
+
+```
+
+## Looping through all ARO's
+
+ZIBR run on all ARO's and saved as `ZIBR_model_results_AROs.csv`
+
+```{r eval=FALSE, include=FALSE}
+
+my_results_df <- tibble()
+
+for (my_ARO in unique(CARD$ARO)) {
+ 
+  Y <- CARD_rpkm_with_zeros %>%
+  filter(ARO %in% my_ARO) %>%
+  select(SampleID, rel_RPKM) %>%
+  column_to_rownames(var = "SampleID")
+
+  #making it the same order
+  Y <- Y[rownames(my_covariates),]
+  
+  zibr_fit <- zibr(logistic_cov = my_covariates, beta_cov = my_covariates, subject_ind = s_toTest$subject_id, Y = Y, time_ind = my_time$timepoint, component_wise_test = T, quad_n = 30, verbose = F)
+  
+  temp_df <- tibble(ARO = my_ARO,
+                    term = colnames(my_covariates),
+                    logistic_est = zibr_fit$logistic_est_table[2:4,"Estimate"],
+                    logistic_pvalue = zibr_fit$logistic_est_table[2:4,"Pvalue"],
+                    logistic_sd_rand = zibr_fit$logistic_s1_est,
+                    beta_est = zibr_fit$beta_est_table[2:4,"Estimate"],
+                    beta_pvalue = zibr_fit$beta_est_table[2:4,"Pvalue"],
+                    beta_sd_rand = zibr_fit$beta_s2_est,
+                    beta_dispersion = zibr_fit$beta_v_est,
+                    loglikelihood = zibr_fit$loglikelihood,
+                    joint_pvalue = zibr_fit$joint_p)
+  
+  my_results_df <- bind_rows(my_results_df, temp_df)
+  
+}
+
+my_results_df %<>%
+  group_by(term) %>%
+  mutate(fdr_joint_pvalue = p.adjust(joint_pvalue, method="BH")) %>%
+  ungroup() %>%
+  left_join(cd_desc %>% select(ARO, description), join_by(ARO))
+
+my_results_df %>%
+  write_csv(here("Figures", "ZIBR_model_results_AROs.csv"))
+
+#basic usage
+#zibr_fit <- zibr(logistic_cov=logistic_cov,beta_cov=beta_cov,Y=Y,subject_ind=subject_ind,time_ind=time_ind)
+# logistic_cov: covariates for the logistic component. Rows: samples. Columns: covariates.
+# beta_cov: covariates for the Beta component. Rows: samples. Columns: covariates.
+# Y: the response variable (i.e the bacterial relative abundance). It is a vector with values in [0,1).
+# subject_ind: the variable with subject IDs.
+# time_ind: the variable with time points.
+# The ordering of the samples in the above matrix or vectors must be consistent.
+# 
+# The zibr function will return the following results
+# 
+# zibr_fit
+# logistic_est_table: the estimated coefficients for logistic component.
+# logistic_s1_est: the estimated standard deviation for the random effect in the logistic component.
+# beta_est_table: the estimated coefficients for Beta component.
+# beta_s2_est: the estimated standard deviation for the random effect in the Beta component.
+# beta_v_est: the estimated dispersion parameter in the Beta component.
+# joint_p: the p-values for jointly testing each covariate in both logistic and Beta component.
+
+```
+
+# Filtering to AMR's in penem drug class
+
+We will still want to filter to genes that are present in at least 10% of the samples.
+
+```{r}
+
+RPKM_toTest <- CARD_rpkm %>%
+  filter(SampleID %in% s_toTest$SampleID) %>%
+  left_join(CARD_annotation, by = "geneID") %>%
+  filter(Drug_Class %in% "cephalosporin;monobactam;penam;penem") %>%
+  group_by(ARO) %>%
+  mutate(perc_present = mean(count > 0)) %>%
+  mutate(mean_RPKM = mean(RPKM)) %>%
+  ungroup() %>%
+  filter(perc_present > 0.1) %>%
+  mutate(log2_RPKM = log2(RPKM))
+
+```
+
+Linear mixed-effect models were used to estimate the change in RPKM of selected ARO between study time_studys. The RPKMs were log2 transformed. Multiple tests were adjusted for false discovery rate using Benjamini-Hochberg method. Only the terms with p<0.05 are shown in the table below. `r length(unique(RPKM_toTest$ARO))` genes were tested. Exported table includes all results.
+
+```{r, results='asis'}
+
+my_form <- "log2_RPKM ~ Age + Sex + time_study"
+
+summaries_df <- run_lmer_on_props(factor_to_test = "ARO", props_toTest = RPKM_toTest, s_toTest = s_toTest, form1 = my_form, p_cutoff = 1, rep_mes_label = "subject_id") %>%
+  mutate(term = str_remove(term, "time_study"))
+
+summaries_df %>%
+  filter(p.value < 0.05) %>%
+  pander(split.table=Inf, digits=2, caption = glue("Linear model with the formula: {my_form}"))
+table_export(summaries_df, "gene_table_export")
+
+```
+
+## Boxplot
+
+```{r fig.height=12, fig.width=8}
+
+to_select <- summaries_df %>%
+  filter(fdr < 0.05) %>%
+  pull(ARO) %>%
+  unique()
+
+number_of_blocks <- ceiling(length(to_select) / 10)
+chunk_it <- function(x,n) split(x, cut(seq_along(x), n, labels = FALSE))
+
+if (number_of_blocks > 1) {
+  my_blocks <- chunk_it(to_select, number_of_blocks)
+} else {
+  my_blocks <- list(to_select)
+}
+
+for (i in 1:number_of_blocks) {
+  subset <- my_blocks[[i]]
+
+my_plot <- RPKM_toTest %>%
+  right_join(s_toTest, by = "SampleID") %>%
+  filter(ARO %in% subset) %>%
+  mutate(label = paste(ARO, description, sep = "\n")) %>%
+  mutate(label = reorder(label, -RPKM)) %>%
+  ggplot(aes(x=time_study, y=RPKM, color=time_study)) +
+  geom_boxplot(outlier.alpha=0) +
+  geom_quasirandom() +
+  facet_wrap(~label, scales="free", ncol = 5) +
+  scale_color_manual(values=ann_colors$time_study) +
+  scale_y_continuous(trans = "log10") +
+  theme_bw() +
+  theme(
+    axis.text.x=element_text(angle=90, hjust=1, vjust=0.5),
+    panel.grid = element_blank(),
+    strip.background = element_blank(),
+    legend.position = "bottom"
+  ) +
+  labs(
+    y="RPKM",
+    x=""
+  )
+
+plot(my_plot)
+
+ggsave(here("Output", glue("horses_penem_ARO_{i}.pdf")), height = 6, width = 8)
+
+}
+
+```
+
+## Post-hoc multiple comparisons
+
+Since we are also interested in other time_study-to-time_study comparisons, we will do post-hoc multiple comparisons with estimated marginal means. Exported table includes all results.
+
+```{r, results='asis'}
+
+summaries_df <- RPKM_toTest %>%
+  inner_join(s_toTest, by = "SampleID") %>%
+  group_by(ARO) %>%
+  do(broom::tidy(emmeans(object = nlme::lme(log2_RPKM ~ Age + Sex + time_study, data=., na.action=na.omit, random = ~1|subject_id), specs = tukey ~ time_study, reverse = T)$contrasts)) %>%
+  ungroup() %>%
+  select(-term, -null.value) %>%
+  left_join(cd_desc %>% select(ARO, description), by = "ARO")
+
+summaries_df %>%
+  # filter(adj.p.value < 0.05) %>%
+  pander(split.table=Inf, digits=2, caption = paste(glue("Estimated marginal means pairwise statistical tests on previous linear model. P-value is adjusted with Tukey's method and filtered by < 0.05.")))
+
+table_export(x = summaries_df, title = "gene_table_export")
+
+```
+
+## Heatmap
+
+We will make a heatmap. We will filter to ARO's that were significant in at least one comparison. We will scale the RPKM's per ARO to better compare between ARO's.
+
+```{r, fig.width=30, fig.height=50, out.width="80%"}
+
+just_sig <- summaries_df %>%
+  filter(adj.p.value < 0.05)
+
+my_AROs <- summaries_df %>%
+  pivot_wider(id_cols = ARO, names_from = contrast, values_from = adj.p.value) %>%
+  filter(ARO %in% just_sig$ARO)
+
+CARD_subset <- CARD_rpkm %>%
+  filter(SampleID %in% s_toTest$SampleID) %>%
+  filter(ARO %in% my_AROs$ARO)
+
+ARO_z_score <- CARD_subset %>%
+  group_by(ARO) %>%
+  mutate(ARO_zscore = scale(RPKM)) %>%
+  ungroup()
+
+ARO_heatmap <- ARO_z_score %>%
+  spread_to_numeric_matrix(row_key = "description", col_key = "SampleID", value = "ARO_zscore")
+
+group_by <- c("time_study")
+grps <- c(group_by)
+grps_symbol <- syms(grps)
+s_toTest %<>% arrange(!!!grps_symbol)
+
+anno <- s_toTest[,grps] %>% as.data.frame()
+rownames(anno) <- s_toTest$SampleID
+colnames(anno) <- grps
+
+ARO_heatmap <- ARO_heatmap[,rownames(anno)] #sorts the heatmap according to the annotation
+order_for_later <- rownames(anno)
+
+paletteLength <- 50
+myColor <- colorRampPalette(c("yellow", "white", "blue"))(paletteLength)
+myBreaks <- c(seq(min(ARO_heatmap), 0, length.out=ceiling(paletteLength/2) + 1), 
+              seq(max(ARO_heatmap)/paletteLength, max(ARO_heatmap), length.out=floor(paletteLength/2)))
+
+pheatmap(
+  ARO_heatmap,
+  annotation = anno,
+  color = myColor,
+  breaks = myBreaks,
+  clustering_distance_rows = "manhattan",
+  cluster_cols = F,
+  cellwidth = 9, cellheight = 9, fontsize = 10,
+  width = 24, height = 12, annotation_colors = ann_colors, show_colnames = T,
+main = "Z-score of ARO gene in Penem class in horses")
+
+fig_name = "sig_changed_ARO_zscore_heatmap_horses_penem.pdf"
+print(glue("Figure saved as {fig_name}"))
+
+pheatmap(
+  ARO_heatmap,
+  annotation = anno,
+  color = myColor,
+  breaks = myBreaks,
+  clustering_distance_rows = "manhattan",
+  cluster_cols = F,
+  cellwidth = 12, cellheight = 12, fontsize = 12,
+  width = 24, height = 12, annotation_colors = ann_colors, show_colnames = T,
+main = "Z-score of ARO gene in Penem class in horses", filename = here("Output", fig_name))
+
+```
+
+### Second heatmap for figure construction
+
+```{r, fig.width=30, fig.height=50, out.width="80%"}
+
+just_sig <- summaries_df %>%
+  filter(adj.p.value < 0.05)
+
+my_AROs <- summaries_df %>%
+  pivot_wider(id_cols = ARO, names_from = contrast, values_from = adj.p.value) %>%
+  filter(ARO %in% just_sig$ARO)
+
+CARD_subset <- CARD_rpkm %>%
+  filter(SampleID %in% s_toTest$SampleID) %>%
+  filter(ARO %in% my_AROs$ARO)
+
+ARO_z_score <- CARD_subset %>%
+  group_by(ARO) %>%
+  mutate(ARO_zscore = scale(RPKM)) %>%
+  ungroup()
+
+ARO_heatmap <- ARO_z_score %>%
+  spread_to_numeric_matrix(row_key = "description", col_key = "SampleID", value = "ARO_zscore")
+
+s_temp <- s_toTest %>%
+  column_to_rownames(var = "SampleID")
+s_temp <- s_temp[order_for_later,]
+ARO_heatmap <- ARO_heatmap[,order_for_later]
+colnames(ARO_heatmap) <- s_temp$HorseID
+
+paletteLength <- 50
+myColor <- colorRampPalette(c("yellow", "white", "blue"))(paletteLength)
+myBreaks <- c(seq(min(AMR_heatmap), 0, length.out=ceiling(paletteLength/2) + 1), 
+              seq(max(AMR_heatmap)/paletteLength, max(AMR_heatmap), length.out=floor(paletteLength/2)))
+
+pheatmap(
+  ARO_heatmap,
+  color = myColor,
+  breaks = myBreaks,
+  clustering_distance_rows = "manhattan",
+  cluster_cols = F,
+  cellwidth = 9, cellheight = 9, fontsize = 10,
+  width = 24, height = 12, show_colnames = T,
+main = "Z-score of ARO gene in Penem class in horses")
+
+fig_name = "sig_changed_ARO_zscore_heatmap_horses_penem_A.pdf"
+print(glue("Figure saved as {fig_name}"))
+
+pheatmap(
+  ARO_heatmap,
+  color = myColor,
+  breaks = myBreaks,
+  clustering_distance_rows = "manhattan",
+  cluster_cols = F,
+  cellwidth = 12, cellheight = 12, fontsize = 12,
+  width = 24, height = 12, show_colnames = T,
+main = "Z-score of ARO gene in Penem class in horses", filename = here("Output", fig_name))
+
+```
+
+
+# End of Report
+
+```{r Generate time stamped report2, eval=FALSE, include=FALSE}
+
+#neat: you can run this following command in the console to give your reports custom names (or date-stamp them)
+
+rstudioapi::documentSaveAll()
+
+script_dir <- file.path("Scripts","Rmds")
+output_dir <- file.path("Output")
+
+if (!dir.exists(here::here(output_dir))) {
+  dir.create(here::here(output_dir))
+}
+
+report_fp <- here::here(script_dir, "Shotgun_gene_abundance_analysis.Rmd")
+output_fp <- here::here(output_dir, paste('CHOPMC-373_Redding_Shotgun_AMR_analysis_', Sys.Date(), '.pdf', sep=''))
+
+rmarkdown::render(report_fp, output_file = output_fp)
+
+```
