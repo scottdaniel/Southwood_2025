@@ -5,7 +5,7 @@ title: |
 author: "Scott G. Daniel, Ph.D."
 date: \today
 geometry: margin=3cm
-output: 
+Output: 
     pdf_document:
         keep_tex: false
         toc: true
@@ -61,7 +61,7 @@ library(qualpalr)
 library(emmeans)
 
 panderOptions("knitr.auto.asis", FALSE)
-#this also means that you have to put results='asis' in any block that has pander output
+#this also means that you have to put results='asis' in any block that has pander Output_pseudocount
 #this lets you loop through variables and produce multiple pander tables and ggplots in a
 #single code block!
 
@@ -87,7 +87,7 @@ table_iterator <- function() {
       table_count <- paste0("0", table_count)
     }
     table_name <- paste0(title, "_", table_count, ".csv")
-    table_path <- here("Output", table_name)
+    table_path <- here("Output_pseudocount", table_name)
     write_csv(x = x, file = table_path, ...)
     print(paste0("Full table saved as ", table_name, "."))
   }
@@ -124,15 +124,16 @@ gene_lengths <- read_tsv(here("Data","CARD_lengths.tsv"), col_names = c("Descrip
 CARD_rpkm <- CARD %>%
   left_join(gene_lengths, by = c("ARO")) %>%
   right_join(s %>% select(SampleID, nonhost), by = "SampleID") %>%
-  mutate(millr = nonhost / 1E6) %>%
+  # group_by(SampleID) %>%
+  # mutate(sample_sums = sum(count)) %>% #do it like RNA way
+  # ungroup() %>%
+  mutate(millr = (nonhost + 1) / 1E6) %>%
   mutate(kbase = nt_length / 1E3) %>%
-  mutate(RPKM = count / millr / kbase) %>%
+  mutate(RPKM = (count + 1) / millr / kbase) %>%
   group_by(ARO) %>%
   filter(sum(count) > 0) %>%
-  mutate(RPKM_min = min(RPKM[RPKM > 0])) %>%
-  mutate(RPKM = ifelse(RPKM == 0, RPKM_min/2, RPKM)) %>%
   ungroup() %>%
-  select(-RPKM_min, -database)
+  select(-database)
 
 CARD_annotation <- read_tsv(here("Data", "aro_categories_index.tsv"))
 
@@ -170,7 +171,7 @@ min_percent = 0.99
 
 ### RPKM analysis
 
-ARO counts from the CARD database were transformed in the following way: counts were divided by the million mapped nonhost reads and the ARO length in kilobases, thus RPKM (Reads per Kilobase per Million mapped reads). Zeros were then replaced by 1/2 the minimum value for any given ARO. Finally, we will restrict our initial analysis to the top 100 genes that are present (i.e. nonzero before transformation) in at least `r min_percent` of samples.
+ARO counts from the CARD database were transformed in the following way: counts were divided by the million nonhost reads and the ARO length in kilobases, thus RPKM (Reads per Kilobase per Million nonhost reads). To account for zeros, a pseudocount of unity was added to both the numerator and denominator in that operation. Finally, a logarithm of base 2 was taken for the relative abundance to account for skewed distributions. We will restrict our initial analysis to the top 100 genes that are present (i.e. nonzero before transformation) in at least `r min_percent` of samples.
 
 ```{r}
 
@@ -196,7 +197,7 @@ RPKM_toTest %<>% filter(ARO %in% top100$ARO)
 
 ##### Tests
 
-Linear mixed-effect models were used to estimate the change in RPKM of selected ARO between study time_studys. The RPKMs were log2 transformed. Multiple tests were adjusted for false discovery rate using Benjamini-Hochberg method. Only the terms with p<0.05 are shown in the table below. `r length(unique(RPKM_toTest$ARO))` genes were tested. Exported table includes all results.
+Linear mixed-effect models were used to estimate the change in log2 of RPKM of selected ARO between time and study_group combined variable. Multiple tests were adjusted for false discovery rate using Benjamini-Hochberg method. Only the terms with p<0.05 are shown in the table below. `r length(unique(RPKM_toTest$ARO))` genes were tested. Exported table includes all results.
 
 ```{r, results='asis'}
 
@@ -209,7 +210,7 @@ summaries_df <- run_lmer_on_props(factor_to_test = "ARO", props_toTest = RPKM_to
 summaries_df %>%
   filter(p.value < 0.05) %>%
   pander(split.table=Inf, digits=2, caption = glue("Linear model with the formula: {my_form}"))
-table_export(summaries_df, "gene_table_export")
+table_export(summaries_df, "gene_table_export_pseudocount")
 
 ```
 
@@ -259,7 +260,7 @@ my_plot <- RPKM_toTest %>%
 
 plot(my_plot)
 
-ggsave(here("Output", glue("horses_ARO_{i}.pdf")), height = 6, width = 8)
+ggsave(here("Output_pseudocount", glue("horses_ARO_{i}.pdf")), height = 6, width = 8)
 
 }
 
@@ -271,23 +272,23 @@ Since we are also interested in other time_study-to-time_study comparisons, we w
 
 ```{r, results='asis'}
 
-# summaries_df <- RPKM_toTest %>%
-#   inner_join(s_toTest, by = "SampleID") %>%
-#   group_by(ARO) %>%
-#   do(broom::tidy(emmeans(object = nlme::lme(log2_RPKM ~ Age + Sex + time_study, data=., na.action=na.omit, random = ~1|subject_id), specs = tukey ~ time_study, reverse = T)$contrasts)) %>%
-#   ungroup() %>%
-#   select(-term, -null.value) %>%
-#   left_join(cd_desc %>% select(ARO, description), by = "ARO")
-# 
-# save(summaries_df, file = here("Data", "100_ARO_posthoc_tests_horse.RDS"))
+summaries_df <- RPKM_toTest %>%
+  inner_join(s_toTest, by = "SampleID") %>%
+  group_by(ARO) %>%
+  do(broom::tidy(emmeans(object = nlme::lme(log2_RPKM ~ Age + Sex + time_study, data=., na.action=na.omit, random = ~1|subject_id), specs = tukey ~ time_study, reverse = T)$contrasts)) %>%
+  ungroup() %>%
+  select(-term, -null.value) %>%
+  left_join(cd_desc %>% select(ARO, description), by = "ARO")
 
-load(file = here("Data", "100_ARO_posthoc_tests_horse.RDS"))
+save(summaries_df, file = here("Data", "100_ARO_posthoc_tests_horse_pseudocount.RDS"))
+
+load(file = here("Data", "100_ARO_posthoc_tests_horse_pseudocount.RDS"))
 
 summaries_df %>%
   filter(adj.p.value < 0.05) %>%
   pander(split.table=Inf, digits=2, caption = paste(glue("Estimated marginal means pairwise statistical tests on previous linear model. P-value is adjusted with Tukey's method and filtered by < 0.05.")))
 
-table_export(x = summaries_df, title = "gene_table_export")
+table_export(x = summaries_df, title = "gene_table_export_pseudocount")
 
 ```
 
@@ -355,7 +356,7 @@ pheatmap(
   cluster_cols = F,
   cellwidth = 12, cellheight = 12, fontsize = 12,
   width = 24, height = 12, annotation_colors = ann_colors, show_colnames = T,
-main = "Z-score of AMR genes in horses", filename = here("Output", fig_name))
+main = "Z-score of AMR genes in horses", filename = here("Output_pseudocount", fig_name))
 
 ```
 
@@ -385,7 +386,7 @@ my_plot <- CARD_ARO_richness %>%
 
 my_plot
 
-ggsave(here("Output", "richness of AROs horses.pdf"), height = 6, width = 6)
+ggsave(here("Output_pseudocount", "richness of AROs horses.pdf"), height = 6, width = 6)
 
 my_table <- CARD_ARO_richness %>%
   inner_join(s_toTest, by = "SampleID") %>%
@@ -393,7 +394,7 @@ my_table <- CARD_ARO_richness %>%
   summarise(mean_richness = mean(Richness_ARO), sd_richness = sd(Richness_ARO), n = n())
 
 my_table %>%
-  write_csv(here("Output", "Richness of AROs per study group.csv"))
+  write_csv(here("Output_pseudocount", "Richness of AROs per study group.csv"))
 
 ```
 
@@ -409,7 +410,7 @@ my_lm <- CARD_ARO_richness %>%
 summaries_df <- broom::tidy(emmeans(object = my_lm, specs = tukey ~ time_study, reverse = T)$contrasts) %>%
   select(-term, -null.value)
 
-table_export(summaries_df, "gene_table_export")
+table_export(summaries_df, "gene_table_export_pseudocount")
 
 summaries_df %>%
   pander(split.cells = Inf, digits = 2)
@@ -432,7 +433,10 @@ RPKM_toTest <- CARD_rpkm %>%
   mutate(mean_RPKM = mean(RPKM)) %>%
   ungroup() %>%
   filter(perc_present > min_percent) %>%
-  mutate(log2_RPKM = log2(RPKM))
+  group_by(SampleID) %>%
+  mutate(rel_RPKM = (RPKM + 1) / (sum(RPKM) + 1) ) %>%
+  ungroup() %>%
+  mutate(log2_RPKM = log2(rel_RPKM))
 
 ```
 
@@ -452,7 +456,7 @@ summaries_df <- run_lmer_on_props(factor_to_test = "ARO", props_toTest = RPKM_to
 #   filter(p.value < 0.05) %>%
 #   pander(split.table=Inf, digits=2, caption = glue("Linear model with the formula: {my_form}"))
 
-table_export(summaries_df, "gene_table_export")
+table_export(summaries_df, "gene_table_export_pseudocount")
 
 ```
 
@@ -502,7 +506,7 @@ my_plot <- RPKM_toTest %>%
     x=""
   )
 
-ggsave(here("Output", glue("horses_ARO_50perc_thresh_{i}.pdf")), height = 6, width = 8)
+ggsave(here("Output_pseudocount", glue("horses_ARO_50perc_thresh_{i}.pdf")), height = 6, width = 8)
 
 }
 
@@ -514,23 +518,23 @@ Since we are also interested in other group-to-group comparisons, we will do pos
 
 ```{r, results='asis'}
 
-# summaries_df <- RPKM_toTest %>%
-#   inner_join(s_toTest, by = "SampleID") %>%
-#   group_by(ARO) %>%
-#   do(broom::tidy(emmeans(object = nlme::lme(log2_RPKM ~ Age + Sex + time_study, data=., na.action=na.omit, random = ~1|subject_id), specs = tukey ~ time_study, reverse = T)$contrasts)) %>%
-#   ungroup() %>%
-#   select(-term, -null.value) %>%
-#   left_join(cd_desc %>% select(ARO, description), by = "ARO")
-# 
-# save(summaries_df, file = here("Data", "50perc_tresh_posthoc_tests_horse.RDS"))
+summaries_df <- RPKM_toTest %>%
+  inner_join(s_toTest, by = "SampleID") %>%
+  group_by(ARO) %>%
+  do(broom::tidy(emmeans(object = nlme::lme(log2_RPKM ~ Age + Sex + time_study, data=., na.action=na.omit, random = ~1|subject_id), specs = tukey ~ time_study, reverse = T)$contrasts)) %>%
+  ungroup() %>%
+  select(-term, -null.value) %>%
+  left_join(cd_desc %>% select(ARO, description), by = "ARO")
 
-load(file = here("Data", "50perc_tresh_posthoc_tests_horse.RDS"))
+save(summaries_df, file = here("Data", "50perc_tresh_posthoc_tests_horse_pseudocount.RDS"))
+
+load(file = here("Data", "50perc_tresh_posthoc_tests_horse_pseudocount.RDS"))
 
 # summaries_df %>%
 #   filter(adj.p.value < 0.05) %>%
 #   pander(split.table=Inf, digits=2, caption = paste(glue("Estimated marginal means pairwise statistical tests on previous linear model. P-value is adjusted with Tukey's method and filtered by < 0.05.")))
 
-table_export(x = summaries_df, title = "gene_table_export")
+table_export(x = summaries_df, title = "gene_table_export_pseudocount")
 
 ```
 
@@ -603,7 +607,7 @@ pheatmap(
   cluster_cols = F,
   cellwidth = 12, cellheight = 12, fontsize = 12,
   width = 24, height = 12, annotation_colors = ann_colors, show_colnames = T,
-main = "Z-score of AMR genes in horses", filename = here("Output", fig_name))
+main = "Z-score of AMR genes in horses", filename = here("Output_pseudocount", fig_name))
 
 ```
 
@@ -672,7 +676,7 @@ summaries_df %>%
   mutate(term = str_remove(term, "time_study")) %>%
   pander(split.table=Inf, digits=2, caption = glue("Linear model with the formula: {my_form}"))
 
-table_export(summaries_df, "gene_table_export")
+table_export(summaries_df, "gene_table_export_pseudocount")
 ```
 
 ##### Boxplot
@@ -714,7 +718,7 @@ my_plot <- CARD_AMR %>%
 
 plot(my_plot)
 
-ggsave(here("Output", glue("horses_AMRgenefamily_{i}.pdf")), height = 8, width = 6)
+ggsave(here("Output_pseudocount", glue("horses_AMRgenefamily_{i}.pdf")), height = 8, width = 6)
 
 }
 
@@ -729,23 +733,23 @@ Since we are also interested in other time_study-to-time_study comparisons, we w
 #filtering out VHH beta-lactamase because its the same in every group
 #and VHW beta-lactamase because it throws an error
 
-# summaries_df <- CARD_AMR %>%
-#   filter(!AMR_Gene_Family %in% c("VHW beta-lactamase", "VHH beta-lactamase")) %>%
-#   inner_join(s_toTest, by = "SampleID") %>%
-#   group_by(AMR_Gene_Family) %>%
-#   do(broom::tidy(emmeans(object = nlme::lme(log2_sum_rpkm ~ Age + Sex + time_study, data=., na.action=na.omit, random = ~1|subject_id), specs = tukey ~ time_study, reverse = T)$contrasts)) %>%
-#   ungroup() %>%
-#   select(-term, -null.value)
-# 
-# save(summaries_df, file = here("Data", "top100_AMRgenefamily_posthoc_tests_horse.RDS"))
+summaries_df <- CARD_AMR %>%
+  filter(!AMR_Gene_Family %in% c("VHW beta-lactamase", "VHH beta-lactamase")) %>%
+  inner_join(s_toTest, by = "SampleID") %>%
+  group_by(AMR_Gene_Family) %>%
+  do(broom::tidy(emmeans(object = nlme::lme(log2_sum_rpkm ~ Age + Sex + time_study, data=., na.action=na.omit, random = ~1|subject_id), specs = tukey ~ time_study, reverse = T)$contrasts)) %>%
+  ungroup() %>%
+  select(-term, -null.value)
 
-load(file = here("Data", "top100_AMRgenefamily_posthoc_tests_horse.RDS"))
+save(summaries_df, file = here("Data", "top100_AMRgenefamily_posthoc_tests_horse_pseudocount.RDS"))
+
+load(file = here("Data", "top100_AMRgenefamily_posthoc_tests_horse_pseudocount.RDS"))
 
 summaries_df %>%
   filter(adj.p.value < 0.05) %>%
   pander(split.table=Inf, digits=2, caption = paste(glue("Estimated marginal means pairwise statistical tests on previous linear model. P-value is adjusted with Tukey's method and filtered by < 0.05.")))
 
-table_export(x = summaries_df, title = "gene_table_export")
+table_export(x = summaries_df, title = "gene_table_export_pseudocount")
 
 ```
 
@@ -814,7 +818,7 @@ pheatmap(
   cluster_cols = F,
   cellwidth = 12, cellheight = 12, fontsize = 12,
   width = 24, height = 12, annotation_colors = ann_colors, show_colnames = T,
-main = "Z-score by AMR gene family in horses", filename = here("Output", fig_name))
+main = "Z-score by AMR gene family in horses", filename = here("Output_pseudocount", fig_name))
 
 ```
 
@@ -869,7 +873,7 @@ pheatmap(
   cluster_cols = F,
   cellwidth = 12, cellheight = 12, fontsize = 12,
   width = 24, height = 12, show_colnames = T,
-main = "Z-score by AMR gene family in horses", filename = here("Output", fig_name))
+main = "Z-score by AMR gene family in horses", filename = here("Output_pseudocount", fig_name))
 
 ```
 
@@ -912,7 +916,7 @@ summaries_df <- run_lmer_on_props(factor_to_test = "Drug_Class", props_toTest = 
 summaries_df %>%
   filter(fdr < 0.05) %>%
   pander(split.table=Inf, digits=2, caption = glue("Linear model with the formula: {my_form}"))
-table_export(summaries_df, "gene_table_export")
+table_export(summaries_df, "gene_table_export_pseudocount")
 ```
 
 ##### Boxplot
@@ -924,15 +928,9 @@ to_select <- summaries_df %>%
   pull(Drug_Class) %>%
   unique()
 
-number_of_blocks <- ceiling(length(to_select) / 7)
-my_blocks <- chunk_it(to_select, number_of_blocks)
-
-for (i in 1:number_of_blocks) {
-  subset <- my_blocks[[i]]
-
 my_plot <- CARD_DC %>%
   right_join(s_toTest, by = "SampleID") %>%
-  filter(Drug_Class %in% subset) %>%
+  filter(Drug_Class %in% to_select) %>%
   mutate(Drug_Class = reorder(Drug_Class, -sum_rpkm)) %>%
   ggplot(aes(x=time_study, y=sum_rpkm, color=time_study)) +
   geom_boxplot(outlier.alpha=0) +
@@ -954,9 +952,8 @@ my_plot <- CARD_DC %>%
 
 plot(my_plot)
 
-ggsave(here("Output", glue("horses_ARO_drugclass_{i}.pdf")), height = 8, width = 6)
+ggsave(here("Output_pseudocount", glue("horses_ARO_drugclass.pdf")), height = 8, width = 6)
 
-}
 
 ```
 
@@ -998,7 +995,7 @@ my_plot <- ggplot(CARD_DC_richness, aes(fill=Drug_Class, x = time_study, y = Ric
 
 my_plot
 
-ggsave(here("Output", "richness of drug classes horses.pdf"), height = 12, width = 12)
+ggsave(here("Output_pseudocount", "richness of drug classes horses.pdf"), height = 12, width = 12)
 
 CARD %>%
   left_join(CARD_annotation, by = "geneID") %>%
@@ -1009,7 +1006,7 @@ CARD %>%
   group_by(time_study, Drug_Class) %>%
   summarise(Richness = n()) %>%
   filter(!Drug_Class %in% "N/A") %>%
-  write_csv(here("Output", "Richness of drug classes per study time_study.csv"))
+  write_csv(here("Output_pseudocount", "Richness of drug classes per study time_study.csv"))
 
 ```
 
@@ -1019,214 +1016,22 @@ Since we are also interested in other time_study-to-time_study comparisons, we w
 
 ```{r, results='asis'}
 
-# summaries_df <- CARD_DC %>%
-#   inner_join(s_toTest, by = "SampleID") %>%
-#   group_by(Drug_Class) %>%
-#   do(broom::tidy(emmeans(object = nlme::lme(log2_sum_rpkm ~ Age + Sex + time_study, data=., na.action=na.omit, random = ~1|subject_id), specs = tukey ~ time_study, reverse = T)$contrasts)) %>%
-#   ungroup() %>%
-#   select(-term, -null.value)
-# 
-# save(summaries_df, file = here("Data", "top100_Drug_Class_posthoc_tests_horse.RDS"))
+summaries_df <- CARD_DC %>%
+  inner_join(s_toTest, by = "SampleID") %>%
+  group_by(Drug_Class) %>%
+  do(broom::tidy(emmeans(object = nlme::lme(log2_sum_rpkm ~ Age + Sex + time_study, data=., na.action=na.omit, random = ~1|subject_id), specs = tukey ~ time_study, reverse = T)$contrasts)) %>%
+  ungroup() %>%
+  select(-term, -null.value)
 
-load(file = here("Data", "top100_Drug_Class_posthoc_tests_horse.RDS"))
+save(summaries_df, file = here("Data", "top100_Drug_Class_posthoc_tests_horse_pseudocount.RDS"))
+
+load(file = here("Data", "top100_Drug_Class_posthoc_tests_horse_pseudocount.RDS"))
 
 summaries_df %>%
   filter(adj.p.value < 0.05) %>%
   pander(split.table=Inf, digits=2, caption = paste(glue("Estimated marginal means pairwise statistical tests on previous linear model. P-value is adjusted with Tukey's method and filtered by < 0.05.")))
 
-table_export(x = summaries_df, title = "gene_table_export")
-
-```
-
-# Rarefaction curve
-
-```{r}
-
-#make matrix with species as columns (ARO's) and rows as sites (samples)
-ARO_matrix <- CARD_rpkm %>%
-  filter(SampleID %in% s_toTest$SampleID) %>%
-  pivot_to_numeric_matrix(obs_col = SampleID, feature_col = ARO, value_col = count)
-
-#total number of species at each samples (row of data)
-S <- specnumber(ARO_matrix)
-
-# smallest sample total count
-raremax <- min(rowSums(ARO_matrix))
-
-# rarefy, w/ raremax as input
-Srare <- rarefy(ARO_matrix, raremax)
-
-#Plot rarefaction results
-par(mfrow = c(1,2))
-plot(S, Srare, xlab = "Observed No. of ARO's", 
-     ylab = "Rarefied No. of ARO's",
-     main = " plot(rarefy(BCI, raremax))")
-abline(0, 1)
-rarecurve(ARO_matrix, step = 20, 
-          sample = raremax, 
-          col = "blue", 
-          cex = 0.6,
-          main = "rarecurve()",
-          label = F)
-
-
-
-```
-
-```{r}
-
-pdf(file = here("Figures", "ARO_rarefaction_curves.pdf"), width = 8, height = 6)
-par(mfrow = c(1,2))
-plot(S, Srare, xlab = "Observed No. of ARO's", 
-     ylab = "Rarefied No. of ARO's",
-     main = " plot(rarefy(BCI, raremax))")
-abline(0, 1)
-rarecurve(ARO_matrix, step = 20, 
-          sample = raremax, 
-          col = "blue", 
-          cex = 0.6,
-          main = "rarecurve()",
-          label = F)
-dev.off()
-
-```
-
-Can we do it with ggplot?
-
-```{r}
-
-rare_df <- rarecurve(ARO_matrix, step = 20, 
-          sample = raremax, 
-          col = "blue", 
-          cex = 0.6,
-          main = "rarecurve()",
-          label = F, tidy = T)
-
-ggplot(rare_df, aes(x = Sample, y = Species, color = Site)) +
-  geom_path() +
-  theme_bw() +
-  labs(y = "ARO's", x = "Sample size") + 
-  scale_color_viridis_d(option = "turbo") +
-  theme(legend.position = "none",
-        axis.title.x = element_text(size=18),
-        axis.title.y = element_text(size=18))
-
-ggsave(filename = here("Figures", "rarefaction_curve_or_AROs_ggplot.pdf"), width = 5, height = 5, useDingbats = F)
-
-```
-
-# ZIBR on ARO's
-
-## Trying on one first: ARO:3000838
-
-```{r}
-
-library(ZIBR)
-
-# everything has to be numeric, like levels
-my_covariates <- s_toTest %>% 
-  select(SampleID, Age, Sex, time_study) %>%
-  column_to_rownames(var = "SampleID") %>%
-  mutate(Sex = ifelse(Sex %in% "F", 1, 2)) %>%
-  mutate(time_study = case_when(time_study %in% "Admit24h" ~ 1,
-                                time_study %in% "Admit72h" ~ 2,
-                                time_study %in% "AdmitMed" ~ 3,
-                                time_study %in% "Discharge24h" ~ 4,
-                                time_study %in% "Discharge72h" ~ 5,
-                                time_study %in% "DischargeMed" ~ 6))
-
-CARD_rpkm_with_zeros <- CARD %>%
-  left_join(gene_lengths, by = c("ARO")) %>%
-  left_join(s %>% select(SampleID, nonhost), by = "SampleID") %>%
-  mutate(millr = nonhost / 1E6) %>%
-  mutate(kbase = nt_length / 1E3) %>%
-  mutate(RPKM = count / millr / kbase) %>%
-  group_by(SampleID) %>%
-  mutate(rel_RPKM = RPKM / sum(RPKM)) %>%
-  ungroup() %>%
-  select(-database)
-
-my_time <- s_toTest %>%
-  mutate(timepoint = ifelse(timepoint %in% "Admit", 1, 2)) %>%
-  select(timepoint)
-
-Y <- CARD_rpkm_with_zeros %>%
-  filter(ARO %in% "ARO:3000838") %>%
-  select(SampleID, rel_RPKM) %>%
-  column_to_rownames(var = "SampleID")
-
-#making it the same order
-Y <- Y[rownames(my_covariates),]
-
-zibr_fit <- zibr(logistic_cov = my_covariates, beta_cov = my_covariates, subject_ind = s_toTest$subject_id, Y = Y, time_ind = my_time$timepoint, component_wise_test = T, quad_n = 30, verbose = F)
-
-zibr_fit
-
-```
-
-## Looping through all ARO's
-
-ZIBR run on all ARO's and saved as `ZIBR_model_results_AROs.csv`
-
-```{r eval=FALSE, include=FALSE}
-
-my_results_df <- tibble()
-
-for (my_ARO in unique(CARD$ARO)) {
- 
-  Y <- CARD_rpkm_with_zeros %>%
-  filter(ARO %in% my_ARO) %>%
-  select(SampleID, rel_RPKM) %>%
-  column_to_rownames(var = "SampleID")
-
-  #making it the same order
-  Y <- Y[rownames(my_covariates),]
-  
-  zibr_fit <- zibr(logistic_cov = my_covariates, beta_cov = my_covariates, subject_ind = s_toTest$subject_id, Y = Y, time_ind = my_time$timepoint, component_wise_test = T, quad_n = 30, verbose = F)
-  
-  temp_df <- tibble(ARO = my_ARO,
-                    term = colnames(my_covariates),
-                    logistic_est = zibr_fit$logistic_est_table[2:4,"Estimate"],
-                    logistic_pvalue = zibr_fit$logistic_est_table[2:4,"Pvalue"],
-                    logistic_sd_rand = zibr_fit$logistic_s1_est,
-                    beta_est = zibr_fit$beta_est_table[2:4,"Estimate"],
-                    beta_pvalue = zibr_fit$beta_est_table[2:4,"Pvalue"],
-                    beta_sd_rand = zibr_fit$beta_s2_est,
-                    beta_dispersion = zibr_fit$beta_v_est,
-                    loglikelihood = zibr_fit$loglikelihood,
-                    joint_pvalue = zibr_fit$joint_p)
-  
-  my_results_df <- bind_rows(my_results_df, temp_df)
-  
-}
-
-my_results_df %<>%
-  group_by(term) %>%
-  mutate(fdr_joint_pvalue = p.adjust(joint_pvalue, method="BH")) %>%
-  ungroup() %>%
-  left_join(cd_desc %>% select(ARO, description), join_by(ARO))
-
-my_results_df %>%
-  write_csv(here("Figures", "ZIBR_model_results_AROs.csv"))
-
-#basic usage
-#zibr_fit <- zibr(logistic_cov=logistic_cov,beta_cov=beta_cov,Y=Y,subject_ind=subject_ind,time_ind=time_ind)
-# logistic_cov: covariates for the logistic component. Rows: samples. Columns: covariates.
-# beta_cov: covariates for the Beta component. Rows: samples. Columns: covariates.
-# Y: the response variable (i.e the bacterial relative abundance). It is a vector with values in [0,1).
-# subject_ind: the variable with subject IDs.
-# time_ind: the variable with time points.
-# The ordering of the samples in the above matrix or vectors must be consistent.
-# 
-# The zibr function will return the following results
-# 
-# zibr_fit
-# logistic_est_table: the estimated coefficients for logistic component.
-# logistic_s1_est: the estimated standard deviation for the random effect in the logistic component.
-# beta_est_table: the estimated coefficients for Beta component.
-# beta_s2_est: the estimated standard deviation for the random effect in the Beta component.
-# beta_v_est: the estimated dispersion parameter in the Beta component.
-# joint_p: the p-values for jointly testing each covariate in both logistic and Beta component.
+table_export(x = summaries_df, title = "gene_table_export_pseudocount")
 
 ```
 
@@ -1261,7 +1066,7 @@ summaries_df <- run_lmer_on_props(factor_to_test = "ARO", props_toTest = RPKM_to
 summaries_df %>%
   filter(p.value < 0.05) %>%
   pander(split.table=Inf, digits=2, caption = glue("Linear model with the formula: {my_form}"))
-table_export(summaries_df, "gene_table_export")
+table_export(summaries_df, "gene_table_export_pseudocount")
 
 ```
 
@@ -1311,7 +1116,7 @@ my_plot <- RPKM_toTest %>%
 
 plot(my_plot)
 
-ggsave(here("Output", glue("horses_penem_ARO_{i}.pdf")), height = 6, width = 8)
+ggsave(here("Output_pseudocount", glue("horses_penem_ARO_{i}.pdf")), height = 6, width = 8)
 
 }
 
@@ -1335,7 +1140,7 @@ summaries_df %>%
   # filter(adj.p.value < 0.05) %>%
   pander(split.table=Inf, digits=2, caption = paste(glue("Estimated marginal means pairwise statistical tests on previous linear model. P-value is adjusted with Tukey's method and filtered by < 0.05.")))
 
-table_export(x = summaries_df, title = "gene_table_export")
+table_export(x = summaries_df, title = "gene_table_export_pseudocount")
 
 ```
 
@@ -1404,7 +1209,7 @@ pheatmap(
   cluster_cols = F,
   cellwidth = 12, cellheight = 12, fontsize = 12,
   width = 24, height = 12, annotation_colors = ann_colors, show_colnames = T,
-main = "Z-score of ARO gene in Penem class in horses", filename = here("Output", fig_name))
+main = "Z-score of ARO gene in Penem class in horses", filename = here("Output_pseudocount", fig_name))
 
 ```
 
@@ -1463,7 +1268,7 @@ pheatmap(
   cluster_cols = F,
   cellwidth = 12, cellheight = 12, fontsize = 12,
   width = 24, height = 12, show_colnames = T,
-main = "Z-score of ARO gene in Penem class in horses", filename = here("Output", fig_name))
+main = "Z-score of ARO gene in Penem class in horses", filename = here("Output_pseudocount", fig_name))
 
 ```
 
@@ -1477,15 +1282,15 @@ main = "Z-score of ARO gene in Penem class in horses", filename = here("Output",
 rstudioapi::documentSaveAll()
 
 script_dir <- file.path("Scripts","Rmds")
-output_dir <- file.path("Output")
+Output_dir <- file.path("Output_pseudocount")
 
-if (!dir.exists(here::here(output_dir))) {
-  dir.create(here::here(output_dir))
+if (!dir.exists(here::here(Output_dir))) {
+  dir.create(here::here(Output_dir))
 }
 
-report_fp <- here::here(script_dir, "Shotgun_gene_abundance_analysis.Rmd")
-output_fp <- here::here(output_dir, paste('CHOPMC-373_Redding_Shotgun_AMR_analysis_', Sys.Date(), '.pdf', sep=''))
+report_fp <- here::here(script_dir, "Shotgun_ARG_analysis_pseudocount.Rmd")
+Output_fp <- here::here(Output_dir, paste('CHOPMC-373_Redding_Shotgun_AMR_analysis_with_pseudocount', Sys.Date(), '.pdf', sep=''))
 
-rmarkdown::render(report_fp, output_file = output_fp)
+rmarkdown::render(report_fp, output_file = Output_fp)
 
 ```

@@ -471,6 +471,126 @@ ggsave(here("Figures", "NMDS_taxa_admit_vs_discharge_hull_plot.pdf"), useDingbat
 
 ```
 
+#### Splitting by Timepoint
+
+##### Admit
+
+```{r}
+
+s_Admit <- s_toTest %>%
+  filter(timepoint %in% "Admit")
+
+bc_sub <- dist_subset(bc, s_Admit$SampleID)
+
+bc_NMDS <-
+  metaMDS(bc_sub,
+          distance = "bray",
+          k = 3,
+          maxit = 999, 
+          trymax = 500,
+          wascores = TRUE)
+
+```
+
+
+```{r}
+
+data.scores <- as.data.frame(scores(bc_NMDS))  #Using the scores function from vegan to extract the site scores and convert to a data.frame
+data.scores$SampleID <- rownames(data.scores)  # create a column of site names, from the rownames of data.scores
+data.scores %<>%
+  left_join(s_Admit %>% select(SampleID, study_group), join_by(SampleID))
+
+grp.a <- data.scores[data.scores$study_group == "24h", ][chull(data.scores[data.scores$study_group == 
+    "24h", c("NMDS1", "NMDS2")]), ]  # hull values for grp A
+grp.b <- data.scores[data.scores$study_group == "72h", ][chull(data.scores[data.scores$study_group == 
+    "72h", c("NMDS1", "NMDS2")]), ]  # hull values for grp B
+grp.c <- data.scores[data.scores$study_group == "Med", ][chull(data.scores[data.scores$study_group == 
+    "Med", c("NMDS1", "NMDS2")]), ]  # hull values for grp C
+
+hull.data <- rbind(grp.a, grp.b, grp.c)  #combine grp.a and grp.b and grp.c
+# head(hull.data)
+
+ggplot() + 
+  geom_polygon(data=hull.data,aes(x=NMDS1,y=NMDS2,fill=study_group,group=study_group),alpha=0.30) + # add the convex hulls
+  geom_point(data=data.scores,aes(x=NMDS1,y=NMDS2,shape=NULL,colour=study_group),size=3) + # add the point markers
+  scale_colour_manual(values=ann_colors$study_group) +
+  scale_fill_manual(values = ann_colors$study_group) +
+  coord_equal() +
+  theme_bw() +
+  labs(colour = "Study group", fill = "Study group") + 
+  theme(axis.text.x = element_blank(),  # remove x-axis text
+        axis.text.y = element_blank(), # remove y-axis text
+        axis.ticks = element_blank(),  # remove axis ticks
+        axis.title.x = element_text(size=18), # remove x-axis labels
+        axis.title.y = element_text(size=18), # remove y-axis labels
+        panel.background = element_blank(), 
+        panel.grid.major = element_blank(),  #remove major-grid labels
+        panel.grid.minor = element_blank(),  #remove minor-grid labels
+        plot.background = element_blank())
+
+ggsave(here("Figures", "NMDS_taxa_admit_only_hull_plot.pdf"), useDingbats = F, height = 4, width = 5)
+
+```
+
+##### Discharge
+
+```{r}
+
+s_Discharge <- s_toTest %>%
+  filter(timepoint %in% "Discharge")
+
+bc_sub <- dist_subset(bc, s_Discharge$SampleID)
+
+bc_NMDS <-
+  metaMDS(bc_sub,
+          distance = "bray",
+          k = 3,
+          maxit = 999, 
+          trymax = 500,
+          wascores = TRUE)
+
+```
+
+
+```{r}
+
+data.scores <- as.data.frame(scores(bc_NMDS))  #Using the scores function from vegan to extract the site scores and convert to a data.frame
+data.scores$SampleID <- rownames(data.scores)  # create a column of site names, from the rownames of data.scores
+data.scores %<>%
+  left_join(s_Discharge %>% select(SampleID, study_group), join_by(SampleID))
+
+grp.a <- data.scores[data.scores$study_group == "24h", ][chull(data.scores[data.scores$study_group == 
+    "24h", c("NMDS1", "NMDS2")]), ]  # hull values for grp A
+grp.b <- data.scores[data.scores$study_group == "72h", ][chull(data.scores[data.scores$study_group == 
+    "72h", c("NMDS1", "NMDS2")]), ]  # hull values for grp B
+grp.c <- data.scores[data.scores$study_group == "Med", ][chull(data.scores[data.scores$study_group == 
+    "Med", c("NMDS1", "NMDS2")]), ]  # hull values for grp C
+
+hull.data <- rbind(grp.a, grp.b, grp.c)  #combine grp.a and grp.b and grp.c
+# head(hull.data)
+
+ggplot() + 
+  geom_polygon(data=hull.data,aes(x=NMDS1,y=NMDS2,fill=study_group,group=study_group),alpha=0.30) + # add the convex hulls
+  geom_point(data=data.scores,aes(x=NMDS1,y=NMDS2,shape=NULL,colour=study_group),size=3) + # add the point markers
+  scale_colour_manual(values=ann_colors$study_group) +
+  scale_fill_manual(values = ann_colors$study_group) +
+  coord_equal() +
+  theme_bw() +
+  labs(colour = "Study group", fill = "Study group") + 
+  theme(axis.text.x = element_blank(),  # remove x-axis text
+        axis.text.y = element_blank(), # remove y-axis text
+        axis.ticks = element_blank(),  # remove axis ticks
+        axis.title.x = element_text(size=18), # remove x-axis labels
+        axis.title.y = element_text(size=18), # remove y-axis labels
+        panel.background = element_blank(), 
+        panel.grid.major = element_blank(),  #remove major-grid labels
+        panel.grid.minor = element_blank(),  #remove minor-grid labels
+        plot.background = element_blank())
+
+ggsave(here("Figures", "NMDS_taxa_discharge_only_hull_plot.pdf"), useDingbats = F, height = 4, width = 5)
+
+```
+
 ### PERMANOVA
 
 PERMANOVA test on Bray-Curtis and Jaccard distances to test if the centroids of the study groups can be distinguished from each other. subject_id was included as a random effect to account for repeated measurements.
@@ -480,14 +600,14 @@ PERMANOVA test on Bray-Curtis and Jaccard distances to test if the centroids of 
 summaries_df <- rbind(
   s_toTest %>%
     do(adonisplus(
-      ., distmat = bc, formula = distmat ~ Age + Sex + time_study,
+      ., distmat = bc, formula = distmat ~ Age + Sex + study_group * timepoint,
       sample_id_var = SampleID, rep_meas_var = subject_id,
       shuffle = c(study_group = "between", timepoint = "within"), permutations=perm)) %>%
     mutate(metric = "Bray-Curtis"),
   
   s_toTest %>%
     do(adonisplus(
-      ., distmat = jd, formula = distmat ~ Age + Sex + time_study,
+      ., distmat = jd, formula = distmat ~ Age + Sex + study_group * timepoint,
       sample_id_var = SampleID, rep_meas_var = subject_id,
       shuffle = c(study_group = "between", timepoint = "within"), permutations=perm)) %>%
     mutate(metric = "Jaccard")
@@ -500,6 +620,42 @@ table_export(summaries_df, "Taxonomic_table_export")
 
 summaries_df %>%
   pander(split.cells = 20, split.table=Inf, digits = 2, emphasize.strong.rows = which(.$p.value<=0.05))
+```
+
+#### Post-hoc comparisons
+
+We can compare group to group with Permanova as well.
+
+```{r, results='asis'}
+
+summaries_df <- rbind(
+  s_toTest %>%
+    do(adonispost(
+      ., distmat = bc, formula = distmat ~ Age + Sex + time_study,
+      sample_id_var = SampleID, rep_meas_var = subject_id, which = time_study,
+      permutations=perm)) %>%
+    mutate(metric = "Bray-Curtis"),
+  
+  s_toTest %>%
+    do(adonispost(
+      ., distmat = jd, formula = distmat ~ Age + Sex + time_study,
+      sample_id_var = SampleID, rep_meas_var = subject_id, which = time_study,
+      permutations=perm)) %>%
+    mutate(metric = "Jaccard")
+)
+
+summaries_df <- summaries_df %>%
+  rename(Distance = metric) %>%
+  filter(term %in% "time_study") %>%
+  select(-term, -one_of(c("sumsq"))) %>%
+  mutate(comparison = str_remove(comparison, " time_study")) %>%
+  select(Distance, everything())
+
+summaries_df %>%
+  pander(split.cells = 20, digits = 2, caption = glue("Post-hoc tests for permutational analysis of variance of Bray-Curtis and Jaccard distances of taxa abundances. Formula: distance_matrix ~ Age + Sex + time_study"), emphasize.strong.rows = which(.$p.value<=0.05))
+
+table_export(x = summaries_df, title = "Taxonomic_table_export")
+
 ```
 
 \newpage

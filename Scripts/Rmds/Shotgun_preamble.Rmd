@@ -45,7 +45,8 @@ s <- read.delim(mapping_file_fp) %>%
   mutate(Keep = input > min_reads) %>%
   mutate(host_species = str_to_sentence(host_species)) %>%
   mutate(study_group = str_to_sentence(study_group)) %>%
-  mutate(study_group = ifelse(subject_id %in% "Vroom", "72h", study_group))
+  mutate(study_group = ifelse(subject_id %in% "Vroom", "72h", study_group)) %>%
+  filter(!host_species %in% c("Human", "Dog"))
 ```
 
 
