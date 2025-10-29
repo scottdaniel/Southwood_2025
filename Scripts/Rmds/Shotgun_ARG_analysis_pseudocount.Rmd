@@ -5,7 +5,7 @@ title: |
 author: "Scott G. Daniel, Ph.D."
 date: \today
 geometry: margin=3cm
-Output: 
+output: 
     pdf_document:
         keep_tex: false
         toc: true

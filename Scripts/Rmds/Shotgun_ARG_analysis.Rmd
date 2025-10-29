@@ -1249,7 +1249,7 @@ zibr_fit
 
 ZIBR run on all ARO's and saved as `ZIBR_model_results_AROs.csv`
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 
 my_results_df <- tibble()
 
@@ -1315,7 +1315,7 @@ my_results_df %>%
 
 And saved as `ZIBR_model_results_AROs_Discharge.csv`
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 
 s_Discharge <- s_toTest %>% 
   filter(timepoint %in% "Discharge")

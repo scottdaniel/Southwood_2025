@@ -515,7 +515,6 @@ ggplot() +
   geom_point(data=data.scores,aes(x=NMDS1,y=NMDS2,shape=NULL,colour=study_group),size=3) + # add the point markers
   scale_colour_manual(values=ann_colors$study_group) +
   scale_fill_manual(values = ann_colors$study_group) +
-  coord_equal() +
   theme_bw() +
   labs(colour = "Study group", fill = "Study group") + 
   theme(axis.text.x = element_blank(),  # remove x-axis text
@@ -574,7 +573,6 @@ ggplot() +
   geom_point(data=data.scores,aes(x=NMDS1,y=NMDS2,shape=NULL,colour=study_group),size=3) + # add the point markers
   scale_colour_manual(values=ann_colors$study_group) +
   scale_fill_manual(values = ann_colors$study_group) +
-  coord_equal() +
   theme_bw() +
   labs(colour = "Study group", fill = "Study group") + 
   theme(axis.text.x = element_blank(),  # remove x-axis text
