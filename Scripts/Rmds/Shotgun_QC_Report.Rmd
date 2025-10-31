@@ -255,11 +255,14 @@ The chart is colored white if species were not observed in the sample, dark blue
 
 ```{r fig.width=20, fig.height=10}
 s_toPlot <- s %>%
+  mutate(timepoint = ifelse(study_day > 0, "Discharge", "Admit")) %>%
   filter(kraken_counts > 0 | !is.na(kraken_counts)) %>%
-  select(SampleID, SampleType, !!enquo(study_group_var), host_species) %>%
-  arrange(host_species, get(study_group_var)) %>%
+  select(SampleID, SampleType, !!enquo(study_group_var), timepoint) %>%
+  arrange(timepoint, get(study_group_var)) %>%
   arrange(SampleType) %>%
   droplevels()
+
+order_for_later <- s_toPlot$SampleID
 
 # select taxa with mean relative abundance of 1% in at least one sample type
 select_taxa <- summed_props %>%
@@ -294,7 +297,43 @@ props_toPlot %>%
   pheat_color_saturated() %>%
   pheat_cluster_rows() %>%
   pheat_annotate_cols(s_toPlot) %>%
-  pheat_save(filename = here("Figures", "Supplemental_Figure_S1.pdf"))
+  pheat_save(filename = here("Figures", "Supplemental_Figure_S1_meat_of_figure.pdf"))
+
+```
+
+```{r second heatmap for replacing samplenames}
+
+library(pheatmap)
+
+clin_md <- read_csv(here("Data", "ClinicalDataFinal.csv")) %>%
+  select(-study_group)
+
+s2 <- s %>%
+  left_join(clin_md, join_by(subject_id)) %>%
+  mutate(timepoint = ifelse(study_day > 0, "Discharge", "Admit"))
+
+s_temp <- s2 %>%
+  mutate(timepoint = ifelse(study_day > 0, "Discharge", "Admit")) %>%
+  filter(kraken_counts > 0 | !is.na(kraken_counts)) %>%
+  select(SampleID, HorseID, SampleType, !!enquo(study_group_var), timepoint) %>%
+  mutate(HorseID = ifelse(str_detect(SampleID, "mockdna"), "Positive control", HorseID)) %>%
+  mutate(HorseID = ifelse(str_detect(SampleID, "Extract"), "Negative control", HorseID)) %>%
+  column_to_rownames(var = "SampleID")
+s_temp <- s_temp[order_for_later,]
+props_toPlot <- props_toPlot[,order_for_later]
+colnames(props_toPlot) <- s_temp$HorseID
+
+fig_name = "Supplmental_Figure_S1_just_for_horseID.pdf"
+print(glue("Figure saved as {fig_name}"))
+
+pheatmap(
+  props_toPlot,
+  clustering_distance_rows = "manhattan",
+  cluster_cols = F,
+  cellwidth = 9, cellheight = 9, fontsize = 10,
+  width = 24, height = 12, annotation_colors = ann_colors, show_colnames = T,
+main = "heatmap just for the horseids", filename = here("Figures", fig_name))
+
 
 ```
 

@@ -100,11 +100,13 @@ s2 %>%
   mutate(`Percent host reads` = round(100 * host / (host + nonhost),2)) %>%
   arrange(desc(`Percent host reads`)) %>%
   select(
-    SampleID,
+    HorseID,
+    timepoint,
+    study_group,
     `Host reads` = host,
     `Non-host reads` = nonhost,
     `Percent host reads`) %>%
-  write_csv(here("Figures", "host_read_removal_table.csv"))
+  write_csv(here("Figures", "Supplemental Table 3.csv"))
 ```
 
 

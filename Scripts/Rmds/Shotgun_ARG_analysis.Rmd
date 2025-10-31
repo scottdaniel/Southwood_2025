@@ -1373,6 +1373,43 @@ my_results_df %>%
 
 ```
 
+## Part of Supplemental Figure 4
+
+```{r}
+
+TEM_changes <- read_csv(here("Figures", "ZIBR_model_results_AROs_Discharge.csv")) %>%
+  filter(description %in% c("TEM-117", "TEM-126", "TEM-192")) %>%
+  filter(term %in% "study_group")
+
+plot_df <- TEM_changes %>%
+  mutate(Significant = case_when(beta_pvalue < 0.05 ~ "p.adj < 0.05",
+                                 beta_pvalue > 0.05 ~ "Not significant")) %>%
+  mutate(description = fct_reorder(description, beta_est))
+
+g <- ggplot(plot_df, aes(x = beta_est, y = description)) +
+  theme_bw() +
+  geom_point(aes(shape = Significant)) +
+  geom_vline(xintercept = 0, linetype = "longdash") +
+  scale_y_discrete(position = "right") +
+  theme(axis.text.y = element_text(size = 6),
+        legend.title = element_text(size = 8),
+        legend.text = element_text(size = 6),
+        legend.position = "left",
+        strip.background = element_blank()) + 
+  labs(title = "",
+       subtitle = "",
+       x = "<-- Decreased vs. 24h   Increased vs. 24h -->",
+       y = "ARO in Penem class") +
+  scale_shape_manual(values = c(1,19))
+plot(g)
+
+fig_name = "Supplemental_Figure_S4_part2.pdf"
+ggsave(here("Figures",fig_name), width = 4, height = 3, useDingbats = F)
+print(glue("Figure saved as {fig_name}"))
+
+```
+
+
 # Filtering to AMR's in penem drug class
 
 We will still want to filter to genes that are present in at least 10% of the samples.
