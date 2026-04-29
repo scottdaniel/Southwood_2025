@@ -3,6 +3,13 @@
 
 Data files and R code for the paper: "Effect of surgical antimicrobial prophylaxis duration for colic surgery on complications and resistome"
 
+# Source data
+
+Decontaminated fastq's are available under the following BioProject:
+- https://www.ncbi.nlm.nih.gov/bioproject/PRJNA1308598
+
+# Paper
+
 Citation:
 *Southwood, L. L. et al. 
 Effect of surgical antimicrobial prophylaxis duration for colic surgery on complications and resistome. 
